@@ -2485,7 +2485,127 @@ definition {
 
 		Form.viewFormDescription(formDescription = "Form Description");
 
-		FormFields.viewTextLabel(fieldLabel = "Text");
+		FormFields.viewTextLabel(fieldLabel = "Age");
 	}
 
+	@description = "Test for creating a form, with changes in the language checking the content sent"
+	@priority = 5
+	test NewTestFormWithMacro {
+
+		task ("Creating a Form with Description") {
+			FormsAdmin.addForm();
+
+			Form.editName(formName = "Form 1");
+
+			Form.editDescription();
+
+		}
+
+		task ("Adding TextField with name 'Full name' and adding NumericField with name 'Age' ") {
+
+			Form.addTextField(
+				fieldPositionNumber = 0,
+				fieldType = "Text");
+
+			Form.editFieldLabelMetal(fieldValue = "Full Name");
+
+			Form.closeSidebar();
+
+			Form.gotoAddField(
+					fieldPositionNumber = 1,
+					fieldType = "Numeric");
+					
+			Form.editFieldLabelMetal(fieldValue = "Age");
+		}
+
+		task ("Adding Translation and translating the name of the labels") {
+
+			Form.addTranslation(localizedLanguage = "Portuguese (Brazil)");
+
+			FormViewBuilder.editFieldLabel(
+				fieldLabel = "Age",
+				label = "Idade");
+
+			FormViewBuilder.editFieldLabel(
+				fieldLabel = "Full Name",
+				label = "Nome Completo");
+
+		}	
+
+		task ("Saving the form created, publishing and accessing published forms ") {
+
+			Form.save();
+
+			Form.publishForm();
+			
+			FormsAdminNavigator.gotoPublishedForm();
+			
+			FormPortlet.waitFormRenderer(text = "Submit");
+		}
+
+
+		task ("First filling in the fields in English and submitting") {
+
+
+			FormViewBuilder.editText(
+				fieldName = "Full Name",
+				fieldValue = "Gabriel Fernando");
+
+			FormViewBuilder.editText(
+				fieldName = "Age",
+				fieldValue = "18");
+
+			FormPortlet.submitSuccessfully();
+		}
+		
+		task ("Repeating the submission, but now filling in the fields in Brazilian Portuguese and submitting again") {
+
+			Form.submitAgain();
+
+			FormPortlet.changeLocale(locale = "português-Brasil");
+
+			FormViewBuilder.editText(
+				fieldName = "Nome Completo",
+				fieldValue = "Lucas Eduardo");
+
+			FormViewBuilder.editText(
+				fieldName = "Idade",
+				fieldValue = "14");
+
+			FormPortlet.submitSuccessfully();
+
+		}
+
+		task ("Returning to the home area of the Liferay Portal, to access the form entries in Content & Data") {
+			Navigator.openURL();
+
+			ProductMenu.gotoPortlet(
+				category = "Content & Data",
+				portlet = "Forms");
+
+			FormsAdminNavigator.gotoViewEntries();
+
+		}
+
+		task ("Validating the created Form entries") {
+
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Full Name",
+				fieldValue = "Gabriel Fernando");
+			
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Age",
+				fieldValue = "18");
+
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Full Name",
+				fieldValue = "Lucas Eduardo");
+			
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Age",
+				fieldValue = "14");
+
+		}
+
+	}
 }

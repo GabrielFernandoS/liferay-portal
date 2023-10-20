@@ -2479,34 +2479,41 @@ definition {
 
 		FormsAdminNavigator.gotoBack();
 
-		FormsAdminNavigator.gotoEditFormByName(formName = "Form 1");
+		FormsAdminNavigator.go	toEditFormByName(formName = "Form 1");
 
 		Form.viewFormName(formName = "Form 1");
 
 		Form.viewFormDescription(formDescription = "Form Description");
 
-		FormFields.viewTextLabel(fieldLabel = "Age");
+		FormFields.viewTextLabel(fieldLabel = "Text");
 	}
 
-	@description = "Test for creating a form, with changes in the language checking the content sent"
+	@description = "Validating a String in Control Panel"
+		@priority = 5
+		test ValidateConfigurationStringAtControlPanel {
+
+			ApplicationsMenuHelper.openApplicationsMenu();
+
+			ApplicationsMenu.gotoPanel(panel = "Control Panel");
+
+			AssertElementPresent(
+				locator1 = "//h2[@id='nav_control_panel.configuration']");
+		}
+
+	@description = "Verify that a form can be published in more than one language with different input values "
 	@priority = 5
 	test NewTestFormWithMacro {
-
-		task ("Creating a Form with Description") {
+		task ("Given an created Form with a text field and Numeric Field") {
 			FormsAdmin.addForm();
 
 			Form.editName(formName = "Form 1");
 
 			Form.editDescription();
-
-		}
-
-		task ("Adding TextField with name 'Full name' and adding NumericField with name 'Age' ") {
-
+			
 			Form.addTextField(
 				fieldPositionNumber = 0,
 				fieldType = "Text");
-
+		
 			Form.editFieldLabelMetal(fieldValue = "Full Name");
 
 			Form.closeSidebar();
@@ -2518,8 +2525,7 @@ definition {
 			Form.editFieldLabelMetal(fieldValue = "Age");
 		}
 
-		task ("Adding Translation and translating the name of the labels") {
-
+		task ("and When the user to add a Translation and to change the label's name") {
 			Form.addTranslation(localizedLanguage = "Portuguese (Brazil)");
 
 			FormViewBuilder.editFieldLabel(
@@ -2529,11 +2535,9 @@ definition {
 			FormViewBuilder.editFieldLabel(
 				fieldLabel = "Full Name",
 				label = "Nome Completo");
-
 		}	
 
-		task ("Saving the form created, publishing and accessing published forms ") {
-
+		task ("and Then the form is saved, published and the user go to the page published forms") {
 			Form.save();
 
 			Form.publishForm();
@@ -2543,10 +2547,7 @@ definition {
 			FormPortlet.waitFormRenderer(text = "Submit");
 		}
 
-
-		task ("First filling in the fields in English and submitting") {
-
-
+		task ("and Then the user define the entries for the two languages and submit") {
 			FormViewBuilder.editText(
 				fieldName = "Full Name",
 				fieldValue = "Gabriel Fernando");
@@ -2556,9 +2557,6 @@ definition {
 				fieldValue = "18");
 
 			FormPortlet.submitSuccessfully();
-		}
-		
-		task ("Repeating the submission, but now filling in the fields in Brazilian Portuguese and submitting again") {
 
 			Form.submitAgain();
 
@@ -2573,21 +2571,18 @@ definition {
 				fieldValue = "14");
 
 			FormPortlet.submitSuccessfully();
-
 		}
 
-		task ("Returning to the home area of the Liferay Portal, to access the form entries in Content & Data") {
+		task ("and When the user leaves the page, returns to the page Content & Data") {
 			Navigator.openURL();
 
 			ProductMenu.gotoPortlet(
 				category = "Content & Data",
 				portlet = "Forms");
-
-			FormsAdminNavigator.gotoViewEntries();
-
 		}
 
-		task ("Validating the created Form entries") {
+		task ("and Then the user validates the entries for each field ") {
+			FormsAdminNavigator.gotoViewEntries();
 
 			FormsAdmin.viewFormTableEntry(
 				fieldLabel = "Full Name",
@@ -2604,8 +2599,6 @@ definition {
 			FormsAdmin.viewFormTableEntry(
 				fieldLabel = "Age",
 				fieldValue = "14");
-
 		}
-
 	}
 }

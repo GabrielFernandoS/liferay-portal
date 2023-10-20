@@ -316,7 +316,7 @@ definition {
 
 		Form.editName(formName = "Test Form");
 
-		Form.(fieldPositionNumber = 0);
+		Form.addTextField(fieldPositionNumber = 0);
 
 		var fieldNameTextField1 = FormFields.getFieldName();
 

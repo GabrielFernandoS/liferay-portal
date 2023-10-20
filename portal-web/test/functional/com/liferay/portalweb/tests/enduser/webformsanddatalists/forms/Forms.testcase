@@ -1744,6 +1744,108 @@ definition {
 			locator1 = "FormsAdmin#FORM_ENTRY_LINK");
 	}
 
+	@description = "Verify that a form can be published in more than one language with different input values "
+	@priority = 5
+	test NewTestFormWithMacro {
+		task ("Given an created Form with a text field and Numeric Field") {
+			FormsAdmin.addForm();
+
+			Form.editName(formName = "Form 1");
+
+			Form.editDescription();
+
+			Form.addTextField(
+				fieldPositionNumber = 0,
+				fieldType = "Text");
+
+			Form.editFieldLabelMetal(fieldValue = "Full Name");
+
+			Form.closeSidebar();
+
+			Form.gotoAddField(
+				fieldPositionNumber = 1,
+				fieldType = "Numeric");
+
+			Form.editFieldLabelMetal(fieldValue = "Age");
+		}
+
+		task ("and When the user to add a Translation and to change the label's name") {
+			Form.addTranslation(localizedLanguage = "Portuguese (Brazil)");
+
+			FormViewBuilder.editFieldLabel(
+				fieldLabel = "Age",
+				label = "Idade");
+
+			FormViewBuilder.editFieldLabel(
+				fieldLabel = "Full Name",
+				label = "Nome Completo");
+		}
+
+		task ("and Then the form is saved, published and the user go to the page published forms") {
+			Form.save();
+
+			Form.publishForm();
+
+			FormsAdminNavigator.gotoPublishedForm();
+
+			FormPortlet.waitFormRenderer(text = "Submit");
+		}
+
+		task ("and Then the user define the entries for the two languages and submit") {
+			FormViewBuilder.editText(
+				fieldName = "Full Name",
+				fieldValue = "Gabriel Fernando");
+
+			FormViewBuilder.editText(
+				fieldName = "Age",
+				fieldValue = 18);
+
+			FormPortlet.submitSuccessfully();
+
+			Form.submitAgain();
+
+			FormPortlet.changeLocale(locale = "português-Brasil");
+
+			FormViewBuilder.editText(
+				fieldName = "Nome Completo",
+				fieldValue = "Lucas Eduardo");
+
+			FormViewBuilder.editText(
+				fieldName = "Idade",
+				fieldValue = 14);
+
+			FormPortlet.submitSuccessfully();
+		}
+
+		task ("and When the user leaves the page, returns to the page Content & Data") {
+			Navigator.openURL();
+
+			ProductMenu.gotoPortlet(
+				category = "Content & Data",
+				portlet = "Forms");
+		}
+
+		task ("and Then the user validates the entries for each field ") {
+			FormsAdminNavigator.gotoViewEntries();
+
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Full Name",
+				fieldValue = "Gabriel Fernando");
+
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Age",
+				fieldValue = 18);
+
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Full Name",
+				fieldValue = "Lucas Eduardo");
+
+			FormsAdmin.viewFormTableEntry(
+				fieldLabel = "Age",
+				fieldValue = 14);
+		}
+	}
+
 	@description = "LPS-84276 - Verify that Form Pages can be removed"
 	@priority = 5
 	test PagesCanBeDeleted {
@@ -2275,6 +2377,16 @@ definition {
 		AssertHTMLSourceTextPresent(value1 = ${escapedScript});
 	}
 
+	@description = "Validating a String in Control Panel"
+	@priority = 5
+	test ValidateConfigurationStringAtControlPanel {
+		ApplicationsMenuHelper.openApplicationsMenu();
+
+		ApplicationsMenu.gotoPanel(panel = "Control Panel");
+
+		AssertElementPresent(locator1 = "//h2[@id='nav_control_panel.configuration']");
+	}
+
 	@description = "This is a use case for LPS-64305 and LPS-96253."
 	@priority = 4
 	test ViewDefaultFieldNamesWithPunctuationCharacters {
@@ -2479,7 +2591,7 @@ definition {
 
 		FormsAdminNavigator.gotoBack();
 
-		FormsAdminNavigator.go	toEditFormByName(formName = "Form 1");
+		FormsAdminNavigator.gotoEditFormByName(formName = "Form 1");
 
 		Form.viewFormName(formName = "Form 1");
 
@@ -2488,117 +2600,4 @@ definition {
 		FormFields.viewTextLabel(fieldLabel = "Text");
 	}
 
-	@description = "Validating a String in Control Panel"
-		@priority = 5
-		test ValidateConfigurationStringAtControlPanel {
-
-			ApplicationsMenuHelper.openApplicationsMenu();
-
-			ApplicationsMenu.gotoPanel(panel = "Control Panel");
-
-			AssertElementPresent(
-				locator1 = "//h2[@id='nav_control_panel.configuration']");
-		}
-
-	@description = "Verify that a form can be published in more than one language with different input values "
-	@priority = 5
-	test NewTestFormWithMacro {
-		task ("Given an created Form with a text field and Numeric Field") {
-			FormsAdmin.addForm();
-
-			Form.editName(formName = "Form 1");
-
-			Form.editDescription();
-			
-			Form.addTextField(
-				fieldPositionNumber = 0,
-				fieldType = "Text");
-		
-			Form.editFieldLabelMetal(fieldValue = "Full Name");
-
-			Form.closeSidebar();
-
-			Form.gotoAddField(
-					fieldPositionNumber = 1,
-					fieldType = "Numeric");
-					
-			Form.editFieldLabelMetal(fieldValue = "Age");
-		}
-
-		task ("and When the user to add a Translation and to change the label's name") {
-			Form.addTranslation(localizedLanguage = "Portuguese (Brazil)");
-
-			FormViewBuilder.editFieldLabel(
-				fieldLabel = "Age",
-				label = "Idade");
-
-			FormViewBuilder.editFieldLabel(
-				fieldLabel = "Full Name",
-				label = "Nome Completo");
-		}	
-
-		task ("and Then the form is saved, published and the user go to the page published forms") {
-			Form.save();
-
-			Form.publishForm();
-			
-			FormsAdminNavigator.gotoPublishedForm();
-			
-			FormPortlet.waitFormRenderer(text = "Submit");
-		}
-
-		task ("and Then the user define the entries for the two languages and submit") {
-			FormViewBuilder.editText(
-				fieldName = "Full Name",
-				fieldValue = "Gabriel Fernando");
-
-			FormViewBuilder.editText(
-				fieldName = "Age",
-				fieldValue = "18");
-
-			FormPortlet.submitSuccessfully();
-
-			Form.submitAgain();
-
-			FormPortlet.changeLocale(locale = "português-Brasil");
-
-			FormViewBuilder.editText(
-				fieldName = "Nome Completo",
-				fieldValue = "Lucas Eduardo");
-
-			FormViewBuilder.editText(
-				fieldName = "Idade",
-				fieldValue = "14");
-
-			FormPortlet.submitSuccessfully();
-		}
-
-		task ("and When the user leaves the page, returns to the page Content & Data") {
-			Navigator.openURL();
-
-			ProductMenu.gotoPortlet(
-				category = "Content & Data",
-				portlet = "Forms");
-		}
-
-		task ("and Then the user validates the entries for each field ") {
-			FormsAdminNavigator.gotoViewEntries();
-
-			FormsAdmin.viewFormTableEntry(
-				fieldLabel = "Full Name",
-				fieldValue = "Gabriel Fernando");
-			
-			FormsAdmin.viewFormTableEntry(
-				fieldLabel = "Age",
-				fieldValue = "18");
-
-			FormsAdmin.viewFormTableEntry(
-				fieldLabel = "Full Name",
-				fieldValue = "Lucas Eduardo");
-			
-			FormsAdmin.viewFormTableEntry(
-				fieldLabel = "Age",
-				fieldValue = "14");
-		}
-	}
 }

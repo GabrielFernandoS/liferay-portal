@@ -1558,14 +1558,6 @@ pre[class*='language-'] {
 		width: 2rem;
 	}
 
-	.page-tabs{
-		@media (max-width: 768px) {
-			.d-md-none {
-				display: none !important;
-			}
-		}
-	}
-
 	.panel-body {
 		padding: 0;
 	}

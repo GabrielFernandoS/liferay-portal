@@ -1483,6 +1483,35 @@ pre[class*='language-'] {
 	}
 }
 
+.page-tabs{
+	@media (max-width: 768px) {
+		.d-md-none {
+			display: none !important;
+		}
+	}
+	@media (max-width: 360px) {
+    .navbar-text-truncate {
+      font-size: 12px;
+      padding: 0px 6px;
+    }
+    .page-editor__editable {
+      padding: 0px 2px;
+    }
+    .nav-segment {
+      padding-left: 10px;
+      padding-right: 10px;
+      padding-top: 6px;
+    }
+    .nav-segment {
+      & .nav-link {
+        &.active {
+          height: 35px;
+        }
+      }
+    }
+  }
+}
+
 .pagination-bar {
 	&,
 	.dropdown-toggle,

@@ -1491,6 +1491,24 @@ pre[class*='language-'] {
 	}
 }
 
+.page-tabs{
+	@media (max-width: 768px) {
+		.d-md-none {
+			display: none !important;
+		}
+	}
+	@media (max-width: 576px) {
+		.navbar-nav .nav-item{
+			width:50%;
+		}
+		.navbar-nav .nav-item .navbar-text-truncate span{
+			white-space:normal;
+			display: flex;
+			line-height: normal;
+		}
+	}
+}
+
 .pagination-bar {
 	&,
 	.dropdown-toggle,

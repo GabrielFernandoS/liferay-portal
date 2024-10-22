@@ -1489,14 +1489,6 @@ pre[class*='language-'] {
 			display: none !important;
 		}
 	}
-}
-
-.page-tabs{
-	@media (max-width: 768px) {
-		.d-md-none {
-			display: none !important;
-		}
-	}
 	@media (max-width: 576px) {
 		.navbar-nav .nav-item{
 			width:50%;

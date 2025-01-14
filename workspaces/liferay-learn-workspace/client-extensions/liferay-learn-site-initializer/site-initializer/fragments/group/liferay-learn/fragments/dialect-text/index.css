@@ -5,3 +5,8 @@
 .component-text a {
 	color: inherit;
 }
+.card-tag__time p::before
+{
+	margin-bottom:auto;
+	margin-top:auto;
+}

@@ -1,0 +1,18 @@
+.CTA-text {
+	align-items: center;
+	color: #2B3A4B;
+	display: flex;
+	font-family: 'Source Sans 3';	
+	font-size: 13px;
+	height: 52px;
+	justify-content: right;
+	line-height: 16px;
+	
+	a {
+		color: #2B3A4B;
+		cursor: pointer;
+		font-weight: 600;
+		text-decoration:underline;
+	}
+}
+

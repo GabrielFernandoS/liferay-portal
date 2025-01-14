@@ -689,7 +689,8 @@ nav.public-sites-navigation .menu-button-group.menu-open .close-btn {
 	display: flex;
 }
 nav.public-sites-navigation .search-account-container .search-icon,
-nav.public-sites-navigation .search-account-container .question-icon {
+nav.public-sites-navigation .search-account-container .question-icon,
+nav.public-sites-navigation .search-account-container .dashboard-icon {
 	border-radius: var(--border-radius-sm);
 	color: var(--body-color);
 	cursor: pointer;
@@ -704,13 +705,19 @@ nav.public-sites-navigation .search-account-container .search-icon:focus,
 nav.public-sites-navigation .search-account-container .search-icon:active,
 nav.public-sites-navigation .search-account-container .question-icon:hover,
 nav.public-sites-navigation .search-account-container .question-icon:focus,
-nav.public-sites-navigation .search-account-container .question-icon:active {
+nav.public-sites-navigation .search-account-container .question-icon:active,
+nav.public-sites-navigation .search-account-container .dashboard-icon:hover,
+nav.public-sites-navigation .search-account-container .dashboard-icon:focus,
+nav.public-sites-navigation .search-account-container .dashboard-icon:active{
 	background-color: var(--color-action-primary-hover-lighten);
 	opacity: 1;
 }
 nav.public-sites-navigation .search-account-container .search-icon:hover svg,
 nav.public-sites-navigation .search-account-container .search-icon:focus svg,
 nav.public-sites-navigation .search-account-container .search-icon:active svg,
+nav.public-sites-navigation .search-account-container .dashboard-icon:hover svg,
+nav.public-sites-navigation .search-account-container .dashboard-icon:focus svg,
+nav.public-sites-navigation .search-account-container .dashboard-icon:active svg,
 nav.public-sites-navigation .search-account-container .question-icon:hover svg,
 nav.public-sites-navigation .search-account-container .question-icon:focus svg,
 nav.public-sites-navigation

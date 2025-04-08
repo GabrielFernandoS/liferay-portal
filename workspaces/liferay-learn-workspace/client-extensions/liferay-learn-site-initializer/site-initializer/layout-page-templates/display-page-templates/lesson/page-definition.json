@@ -1,6 +1,5 @@
 {
 	"pageElement": {
-		"id": "3141aa58-7a47-37a8-1aff-cbcabe07e150",
 		"pageElements": [
 			{
 				"definition": {
@@ -8,10 +7,15 @@
 						"learn-education"
 					],
 					"fragmentStyle": {
-						"paddingTop": "4",
 						"width": "99%"
 					},
 					"fragmentViewports": [
+						{
+							"fragmentViewportStyle": {
+								"width": "95%"
+							},
+							"id": "portraitMobile"
+						},
 						{
 							"fragmentViewportStyle": {
 								"paddingLeft": "0",
@@ -24,17 +28,15 @@
 					"indexed": true,
 					"layout": {
 						"contentDisplay": "FlexColumn",
-						"paddingTop": 2,
 						"widthType": "Fixed"
 					}
 				},
-				"id": "77c2db7c-f520-317a-10b5-ec87bc0c9145",
 				"pageElements": [
 					{
 						"definition": {
 							"fragment": {
-								"key": "lms-course-top-banner",
-								"siteKey": "Liferay Learn"
+								"key": "lesson-top-banner",
+								"siteKey": "Guest"
 							},
 							"fragmentConfig": {
 								"assetType": "lesson"
@@ -50,7 +52,7 @@
 							"customCSS": ".[$FRAGMENT_CLASS$] {\n \n}\n\n\n    ",
 							"fragment": {
 								"key": "lms-lesson-display-page-layout",
-								"siteKey": "Liferay Learn"
+								"siteKey": "Guest"
 							},
 							"fragmentConfig": {
 							},
@@ -62,12 +64,10 @@
 							},
 							"indexed": true
 						},
-						"id": "d2c09153-369e-340c-0961-e0f79c86ba0a",
 						"pageElements": [
 							{
 								"definition": {
 								},
-								"id": "f6c32937-513d-6336-d0e0-b579f48e2200",
 								"pageElements": [
 									{
 										"definition": {
@@ -99,7 +99,6 @@
 											},
 											"indexed": true
 										},
-										"id": "cc371220-d297-5368-ddcf-4372cb4d3fa7",
 										"type": "Fragment"
 									},
 									{
@@ -110,10 +109,27 @@
 											"widgetInstance": {
 												"widgetConfig": {
 												},
-												"widgetName": "com_liferay_client_extension_web_internal_portlet_ClientExtensionEntryPortlet_84997331558403_LXC_liferay_lms_lesson_navigation"
+												"widgetName": "com_liferay_client_extension_web_internal_portlet_ClientExtensionEntryPortlet_57868206215768_LXC_liferay_lms_lesson_navigation"
 											}
 										},
 										"type": "Widget"
+									},
+									{
+										"definition": {
+											"fragment": {
+												"key": "sign-in-banner",
+												"siteKey": "Guest"
+											},
+											"fragmentConfig": {
+											},
+											"fragmentFields": [
+											],
+											"fragmentStyle": {
+												"marginTop": "3"
+											},
+											"indexed": true
+										},
+										"type": "Fragment"
 									},
 									{
 										"definition": {
@@ -129,27 +145,19 @@
 												"justify": "Center"
 											}
 										},
-										"id": "37cc112f-99ac-99aa-f61e-fcc10e3b6c57",
 										"pageElements": [
 											{
 												"definition": {
 													"customCSS": ".[$FRAGMENT_CLASS$] {\nz-index: 100;\n}",
 													"fragment": {
 														"key": "sign-in-banner",
-														"siteKey": "Liferay Learn"
+														"siteKey": "Guest"
 													},
 													"fragmentConfig": {
 													},
 													"fragmentFields": [
 														{
 															"id": "image-editable-product-facebook",
-															"value": {
-																"fragmentLink": {
-																}
-															}
-														},
-														{
-															"id": "text1",
 															"value": {
 																"fragmentLink": {
 																}
@@ -161,7 +169,6 @@
 													},
 													"indexed": true
 												},
-												"id": "09458d53-958b-7c1a-be3a-f46b4cd38623",
 												"type": "Fragment"
 											}
 										],
@@ -179,11 +186,30 @@
 			{
 				"definition": {
 					"fragment": {
-						"key": "lms-page-loading",
-						"siteKey": "Liferay Learn"
+						"key": "progress-tracker",
+						"siteKey": "57868206215768"
 					},
 					"fragmentConfig": {
-						"loadingTextKey": "loading-knowledge-label"
+						"assetType": "lesson",
+						"progress": 100
+					},
+					"fragmentFields": [
+					],
+					"fragmentStyle": {
+						"hidden": true
+					},
+					"indexed": true
+				},
+				"type": "Fragment"
+			},
+			{
+				"definition": {
+					"fragment": {
+						"key": "page-loading-indicator",
+						"siteKey": "Guest"
+					},
+					"fragmentConfig": {
+						"loadingTextKey": ""
 					},
 					"fragmentFields": [
 					],
@@ -200,7 +226,7 @@
 	"settings": {
 		"colorSchemeName": "01",
 		"masterPage": {
-			"key": "liferay-learn"
+			"key": "liferay-learn-refactor"
 		},
 		"themeName": "Dialect",
 		"themeSettings": {

@@ -1,27 +1,27 @@
 <script>
-	const _addEventListener = (selectors) => {
-		var elements = document.querySelectorAll(selectors);
+const _addEventListener = (selectors) => {
+  var elements = document.querySelectorAll(selectors);
 
-		elements.forEach((element) => {
-			element.addEventListener("click", (event) => {
-				event.preventDefault();
+  elements.forEach((element) => {
+    element.addEventListener("click", (event) => {
+      event.preventDefault();
 
 				const anchorElement = document.getElementById(element.getAttribute("id").replace("toc-", ""));
 
-				if (anchorElement) {
-					window.scrollTo({
-						behavior: "smooth",
-						top: anchorElement.getBoundingClientRect().top + window.scrollY - 190,
-					});
-				}
-			});
-		});
+      if (anchorElement) {
+        window.scrollTo({
+          behavior: "smooth",
+          top: anchorElement.getBoundingClientRect().top + window.scrollY - 190,
+        });
+      }
+    });
+  });
 	}
 
 	window.addEventListener('load', function() {
-		_addEventListener("h1 a, h2 a, h3 a");
-		_addEventListener(".toc li a");
-	});
+  _addEventListener("h1 a, h2 a, h3 a");
+  _addEventListener(".toc li a");
+});
 </script>
 
 <#assign
@@ -150,7 +150,7 @@
 								<div class="learn-article-category-tag mr-2">
 									<a
 										class="label tag-container"
-										href="/search?category=${taxonomyCategory.categoryId}"
+										href="/search?${vocabulary?lower_case?replace(" ", "-", "r")}=${taxonomyCategory.categoryId}"
 									>
 										<span>${taxonomyCategory.categoryName}</span>
 									</a>

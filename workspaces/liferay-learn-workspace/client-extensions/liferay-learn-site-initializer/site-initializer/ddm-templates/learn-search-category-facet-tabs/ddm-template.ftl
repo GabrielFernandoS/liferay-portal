@@ -5,7 +5,7 @@
 	/>
 
 	<#list entries as entry>
-		<#assign label = entry.getBucketText()?upper_case />
+		<#assign label = entry.bucketText?upper_case />
 		<#if label == "OFFICIAL DOCUMENTATION">
 			<#assign orderedEntries = [entry] + orderedEntries />
 		<#elseif label == "HOW TO">

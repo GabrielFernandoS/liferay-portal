@@ -11,7 +11,7 @@
 			tabindex="0"
 		>
 		<span class="text-truncate-inline-sort-filter">
-			<span class="text-truncate sort-title">
+			<span class="sort-title text-truncate">
 				${languageUtil.get(locale, "sort-by")}
 			</span>
 		</span>
@@ -20,7 +20,7 @@
 			<div class="collapse-icon-open">
 				<svg
 					aria-hidden="true"
-					class="lexicon-icon lexicon-icon-angle-down arrow-sort-filter"
+					class="arrow-sort-filter lexicon-icon lexicon-icon-angle-down"
 					focusable="false"
 					viewBox="0 0 512 512"
 				>
@@ -36,7 +36,7 @@
 			<div class="collapse-icon-closed">
 				<svg
 					aria-hidden="true"
-					class="lexicon-icon lexicon-icon-angle-right arrow-sort-filter"
+					class="arrow-sort-filter lexicon-icon lexicon-icon-angle-right"
 					focusable="false"
 					viewBox="0 0 512 512"
 				>
@@ -81,21 +81,20 @@
 
 		dataTargetElements.forEach((element) => {
 			element.classList.toggle('collapsed');
-			const isExpanded = element.getAttribute('aria-expanded') === 'true';
-			element.setAttribute('aria-expanded', !isExpanded);
+			element.setAttribute('aria-expanded', !(element.getAttribute('aria-expanded') === 'true'));
 		});
 
 		const targetElement = document.getElementById(dataTargetId);
+
 		if (targetElement) {
 			targetElement.classList.toggle('show');
 		}
 	}
 
 	function handleChangeSort(event) {
-		const selectedOptionValue = event.currentTarget.value;
 		const urlParams = new URLSearchParams(window.location.search);
 
-		urlParams.set('sort', selectedOptionValue);
+		urlParams.set('sort', event.currentTarget.value);
 		window.location.search = urlParams;
 	}
 </script>

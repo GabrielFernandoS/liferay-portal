@@ -17,26 +17,10 @@
 		</span>
 
 		<div class="collapse-icon">
-			<div class="collapse-icon-open">
-				<svg
-					aria-hidden="true"
-					class="arrow-sort-filter lexicon-icon lexicon-icon-angle-down"
-					focusable="false"
-					viewBox="0 0 512 512"
-				>
-					<g>
-						<path
-							class="lexicon-icon-outline"
-							d="M272.8,375.2L475,173.3c23-23.6-11.9-59.9-35.1-36L256,320.3L72.2,137.4c-23.5-24-58.2,12.5-35.2,36.1l202.1,201.7C249.2,385.4,263.5,384.5,272.8,375.2z"
-						></path>
-					</g>
-				</svg>
-			</div>
-
 			<div class="collapse-icon-closed">
 				<svg
 					aria-hidden="true"
-					class="arrow-sort-filter lexicon-icon lexicon-icon-angle-right"
+					class="lexicon-icon lexicon-icon-angle-right"
 					focusable="false"
 					viewBox="0 0 512 512"
 				>
@@ -44,6 +28,22 @@
 						<path
 							class="lexicon-icon-outline"
 							d="M375.2,239.2L173.3,37c-23.6-23-59.9,11.9-36,35.1l183,183.9L137.4,439.8c-24,23.5,12.5,58.2,36.1,35.2l201.7-202.1C385.4,262.8,384.5,248.5,375.2,239.2z"
+						></path>
+					</g>
+				</svg>
+			</div>
+
+			<div class="collapse-icon-open">
+				<svg
+					aria-hidden="true"
+					class="lexicon-icon lexicon-icon-angle-down"
+					focusable="false"
+					viewBox="0 0 512 512"
+				>
+					<g>
+						<path
+							class="lexicon-icon-outline"
+							d="M272.8,375.2L475,173.3c23-23.6-11.9-59.9-35.1-36L256,320.3L72.2,137.4c-23.5-24-58.2,12.5-35.2,36.1l202.1,201.7C249.2,385.4,263.5,384.5,272.8,375.2z"
 						></path>
 					</g>
 				</svg>
@@ -57,12 +57,12 @@
 			<#list entries as entry>
 				<label>
 					<input
+						${entry.isSelected()?then("checked","")}
 						class="form-check-input"
 						name="inlineRadioOptions"
 						onchange="handleChangeSort(event);"
 						type="radio"
 						value="${entry.getField()}"
-						${entry.isSelected()?then("checked","")}
 					>
 					<span class="form-check-label-text">
 						${entry.getLanguageLabel()}
@@ -100,6 +100,23 @@
 </script>
 
 <style>
+	#sort-filter-items {
+		align-items: start;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		margin-left: 8px;
+		margin-top: 12px;
+	}
+
+	#sort-filter-items label {
+		align-items: center;
+		color: var(--color-neutral-10, #282934);
+		display: flex;
+		font-weight: 400;
+		margin-bottom: 0;
+	}
+
 	.arrow-sort-filter {
 		height: 12px;
 		width: 12px;
@@ -125,22 +142,6 @@
 	.sort-filter-container {
 		display: flex;
 		flex-direction: column;
-		margin-bottom: 0;
-	}
-
-	#sort-filter-items {
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-		margin-top: 12px;
-		margin-left: 8px;
-	}
-
-	#sort-filter-items label {
-		align-items: center;
-		color: var(--color-neutral-10, #282934);
-		display: flex;
-		font-weight: 400;
 		margin-bottom: 0;
 	}
 

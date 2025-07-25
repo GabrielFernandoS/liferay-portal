@@ -14,7 +14,7 @@
 	</#list>
 
 	<#list assetCategoriesSearchFacetDisplayContext.getBucketDisplayContexts() as bucketDisplayContext>
-		<#assign totalCount = totalCount + bucketDisplayContext.getCount() />
+		<#assign totalCount = bucketDisplayContext.getCount() + totalCount />
 	</#list>
 
 	<ul class="learn-category-facet-tabs list-unstyled tab-list" id="tab-list">
@@ -124,8 +124,8 @@
 
 <@liferay_aui.script>
 	function handleStyleTabs(event) {
-		const targetButton = event.currentTarget;
 		const buttons = document.querySelectorAll('.tab-btn');
+		const targetButton = event.currentTarget;
 
 		buttons.forEach(button => {
 			button.classList.remove('selected-tab-btn');

@@ -5035,14 +5035,7 @@
 							"name": {
 								"en_US": "Related Courses"
 							},
-							"objectRelationshipExternalReferenceCode": "P2S3_TRAINER_KIT_TO_P2S3_COURSE",
-							"priority": 0
-						},
-						{
-							"name": {
-								"en_US": "Related Learning Paths"
-							},
-							"objectRelationshipExternalReferenceCode": "P2S3_TRAINER_KIT_TO_P2S3_LEARNING_PATH",
+							"objectRelationshipExternalReferenceCode": "P2S3_TRAINER_KIT_TO_T4T14_COURSE",
 							"priority": 0
 						}
 					]
@@ -5055,11 +5048,11 @@
 					"label": {
 						"en_US": "P2S3 Trainer Kit to P2S3 Course"
 					},
-					"name": "p2s3TrainerKitToP2S3Course",
+					"name": "p2S3TrainerKitToCourse",
 					"objectDefinitionExternalReferenceCode1": "P2S3_TRAINER_KIT",
-					"objectDefinitionExternalReferenceCode2": "P2S3_COURSE",
+					"objectDefinitionExternalReferenceCode2": "T4T14_COURSE",
 					"objectDefinitionModifiable2": true,
-					"objectDefinitionName2": "P2S3Course",
+					"objectDefinitionName2": "Course",
 					"objectDefinitionScope2": "company",
 					"objectDefinitionSystem2": false,
 					"reverse": false,
@@ -5076,22 +5069,6 @@
 					"objectDefinitionExternalReferenceCode2": "P2S3_FAQ_TOPIC",
 					"objectDefinitionModifiable2": true,
 					"objectDefinitionName2": "P2S3FAQTopic",
-					"objectDefinitionScope2": "company",
-					"objectDefinitionSystem2": false,
-					"reverse": false,
-					"type": "manyToMany"
-				},
-				{
-					"deletionType": "disassociate",
-					"externalReferenceCode": "P2S3_TRAINER_KIT_TO_P2S3_LEARNING_PATH",
-					"label": {
-						"en_US": "P2S3 Trainer Kit to P2S3 Learning Path"
-					},
-					"name": "p2s3TrainerKitToP2S3LearningPath",
-					"objectDefinitionExternalReferenceCode1": "P2S3_TRAINER_KIT",
-					"objectDefinitionExternalReferenceCode2": "P2S3_LEARNING_PATH",
-					"objectDefinitionModifiable2": true,
-					"objectDefinitionName2": "P2S3LearningPath",
 					"objectDefinitionScope2": "company",
 					"objectDefinitionSystem2": false,
 					"reverse": false,

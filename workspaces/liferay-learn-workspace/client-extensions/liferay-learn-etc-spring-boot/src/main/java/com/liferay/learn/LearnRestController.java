@@ -112,7 +112,6 @@ public class LearnRestController extends BaseRestController {
 			).openConnection();
 
 			connection.setRequestMethod("GET");
-
 			connection.setRequestProperty("Accept", "application/json");
 
 			JSONObject documentJSONObject = new JSONObject(

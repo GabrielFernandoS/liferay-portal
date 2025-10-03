@@ -360,9 +360,9 @@ public class LearnRestController extends BaseRestController {
 
 		html = stringBuffer.toString();
 
-		String textContent = html.replaceAll("(?s)<[^>]+>", " ");
-
-		return textContent.replaceAll(
+		return html.replaceAll(
+			"(?s)<[^>]+>", " "
+		).replaceAll(
 			"\\s+", " "
 		).trim();
 	}

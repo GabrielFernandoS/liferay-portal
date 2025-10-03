@@ -120,17 +120,16 @@ public class LearnRestController extends BaseRestController {
 					connection.getInputStream(
 					).readAllBytes()));
 
-			JSONArray itemsJSONArray = documentJSONObject.optJSONArray("items");
+			JSONArray jsonArray = documentJSONObject.optJSONArray("items");
 
 			JSONObject documentItemJSONObject =
-				((itemsJSONArray != null) && (itemsJSONArray.length() > 0)) ?
-					itemsJSONArray.optJSONObject(0) : null;
+				((jsonArray != null) && (jsonArray.length() > 0)) ?
+					jsonArray.optJSONObject(0) : null;
 
 			OffsetDateTime offsetDateTime2 = null;
 
-			if (!JSONUtil.isEmpty(itemsJSONArray)) {
-				JSONObject audioFileItemJSONObject =
-					itemsJSONArray.getJSONObject(0);
+			if (!JSONUtil.isEmpty(jsonArray)) {
+				JSONObject audioFileItemJSONObject = jsonArray.getJSONObject(0);
 
 				offsetDateTime2 = OffsetDateTime.parse(
 					audioFileItemJSONObject.getString("dateModified")
@@ -139,7 +138,7 @@ public class LearnRestController extends BaseRestController {
 				);
 			}
 
-			if ((itemsJSONArray == null) || itemsJSONArray.isEmpty() ||
+			if ((jsonArray == null) || jsonArray.isEmpty() ||
 				offsetDateTime1.isAfter(offsetDateTime2)) {
 
 				ByteArrayOutputStream byteArrayOutputStream =

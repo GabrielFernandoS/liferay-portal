@@ -61,225 +61,145 @@ public class LearnRestController extends BaseRestController {
 	@GetMapping("/lesson/{lessonId}/audio/base64")
 	@ResponseBody
 	public ResponseEntity<Object> getLessonAudioBase64(
-			@AuthenticationPrincipal Jwt jwt, @PathVariable long lessonId,
-			@RequestParam String folderId, @RequestParam String languageCode,
-			@RequestParam String voiceName, @RequestParam String voiceType) {
-
-		// --- DEBUG 1: Method Entry and Key Parameters ---
-		System.out.println("--- DEBUG: ENTERING getLessonAudioBase64 ---");
-		System.out.println("DEBUG: lessonId: " + lessonId);
-		System.out.println("DEBUG: folderId: " + folderId);
-		System.out.println("DEBUG: languageCode: " + languageCode);
-		System.out.println("DEBUG: voiceType: " + voiceType);
+		@AuthenticationPrincipal Jwt jwt, @PathVariable long lessonId,
+		@RequestParam String folderId, @RequestParam String languageCode,
+		@RequestParam String voiceName, @RequestParam String voiceType) {
 
 		try {
-			// --- STEP 1.1: Fetch Lesson Data ---
-			System.out.println("DEBUG: Sending GET request to fetch lesson content: /o/c/lessons/" + lessonId);
-			String lessonResponse = get(
+			JSONObject lessonJSONObject = new JSONObject(
+				get(
 					_getAuthorization(),
 					UriComponentsBuilder.fromPath(
-							"/o/c/lessons/" + lessonId
+						"/o/c/lessons/" + lessonId
 					).queryParam(
-							"fields", "content,dateModified"
-					).build(
-					).toUri());
-
-			// --- DEBUG 1.2: Inspect Raw Lesson Response ---
-			System.out.println("DEBUG: Raw Lesson API Response (first 300 chars): " + lessonResponse.substring(0, Math.min(lessonResponse.length(), 300)) + "...");
-			JSONObject lessonJSONObject = new JSONObject(lessonResponse);
-			System.out.println("DEBUG: lessonJSONObject successfully created.");
-
-			String content = lessonJSONObject.getString("content");
-
-			// --- DEBUG 2: Content Validation Check ---
-			System.out.println("DEBUG: Extracted Content Length: " + (content != null ? content.length() : "null"));
-			System.out.println("DEBUG: Validator.isNull(content) result: " + Validator.isNull(content));
-
-			if (Validator.isNull(content)) {
-				// --- DEBUG 3: Exit: Missing Content ---
-				System.out.println("DEBUG: EXITING: Lesson content is null or empty.");
-				return ResponseEntity.status(
-						HttpStatus.NOT_FOUND
-				).body(
-						"Lesson " + lessonId + " is missing readable text."
-				);
-			}
-
-			// --- STEP 2.1: Construct Document Filter and Fetch Cached Audio ---
-			String filter = StringBundler.concat(
-					"title eq 'lesson-", lessonId, "-", voiceType, ".mp3'");
-			System.out.println("DEBUG: Document Filter for cache check: " + filter);
-
-			String documentsResponse = new String(get(
-					"",
-					UriComponentsBuilder.fromPath(
-							"/o/headless-delivery/v1.0/document-folders/" +
-									folderId + "/documents"
-					).queryParam(
-							"filter", filter
+						"fields", "content,dateModified"
 					).build(
 					).toUri()));
 
-			// --- DEBUG 4.1: Inspect Raw Documents Response ---
-			System.out.println("DEBUG: Raw Documents API Response (first 300 chars): " + documentsResponse.substring(0, Math.min(documentsResponse.length(), 300)) + "...");
-			JSONObject documentsJSONObject = new JSONObject(documentsResponse);
+			String content = lessonJSONObject.getString("content");
+
+			if (Validator.isNull(content)) {
+				return ResponseEntity.status(
+					HttpStatus.NOT_FOUND
+				).body(
+					"Lesson " + lessonId + " is missing readable text."
+				);
+			}
+
+			JSONObject documentsJSONObject = new JSONObject(
+				get(
+					"",
+					UriComponentsBuilder.fromPath(
+						"/o/headless-delivery/v1.0/document-folders/" +
+							folderId + "/documents"
+					).queryParam(
+						"filter",
+						StringBundler.concat(
+							"title eq 'lesson-", lessonId, "-", voiceType,
+							".mp3'")
+					).build(
+					).toUri()));
 
 			JSONObject documentJSONObject = null;
 
 			JSONArray jsonArray = documentsJSONObject.optJSONArray("items");
 
-			// --- DEBUG 4.2: Check if cached document exists ---
-			boolean documentFound = (jsonArray != null && !jsonArray.isEmpty());
-			System.out.println("DEBUG: Cached Document Found (jsonArray.isEmpty() is false): " + documentFound);
-
-			if (documentFound) {
-				// --- STEP 3.1: Compare Lesson Date (Source) vs. Document Date (Cache) ---
+			if (!jsonArray.isEmpty()) {
 				OffsetDateTime offsetDateTime1 = OffsetDateTime.parse(
-						lessonJSONObject.getString("dateModified")
+					lessonJSONObject.getString("dateModified")
 				).truncatedTo(
-						ChronoUnit.MINUTES
+					ChronoUnit.MINUTES
 				);
 
 				documentJSONObject = jsonArray.optJSONObject(0);
 
 				OffsetDateTime offsetDateTime2 = OffsetDateTime.parse(
-						documentJSONObject.getString("dateModified")
+					documentJSONObject.getString("dateModified")
 				).truncatedTo(
-						ChronoUnit.MINUTES
+					ChronoUnit.MINUTES
 				);
 
-				// --- DEBUG 5: Date Comparison Results ---
-				System.out.println("DEBUG: Lesson dateModified (Source): " + offsetDateTime1);
-				System.out.println("DEBUG: Document dateModified (Cache): " + offsetDateTime2);
-				boolean lessonIsNewer = offsetDateTime1.isAfter(offsetDateTime2);
-				System.out.println("DEBUG: Lesson is newer than cache (isAfter result): " + lessonIsNewer);
-
-
-				if (lessonIsNewer) {
-					// --- STEP 4.1: Cache Invalid/Outdated - Generate New Audio ---
-					System.out.println("DEBUG: CACHE INVALIDATED. Proceeding with new TTS generation.");
-
+				if (offsetDateTime1.isAfter(offsetDateTime2)) {
 					ByteArrayOutputStream byteArrayOutputStream =
-							new ByteArrayOutputStream();
+						new ByteArrayOutputStream();
 
 					List<String> ssmls = _splitSsml(
-							content.replaceAll("\\bLiferay\\b", "Life-ray"), 5000);
+						content.replaceAll("\\bLiferay\\b", "Life-ray"), 5000);
 
-					System.out.println("DEBUG: Content split into " + ssmls.size() + " SSML chunks for TTS.");
-
-					int chunkIndex = 0;
 					for (String ssml : ssmls) {
-						chunkIndex++;
-						// --- DEBUG 6: TTS Call for each SSML chunk ---
-						System.out.println("DEBUG: Sending chunk " + chunkIndex + "/" + ssmls.size() + " to TTS. SSML start: " + ssml.substring(0, Math.min(ssml.length(), 100)) + "...");
-
-						String ttsPayload = new JSONObject(
-								HashMapBuilder.<String, Object>put(
-										"audioConfig",
-										HashMapBuilder.<String, Object>put(
-												"audioEncoding", "MP3"
-										).build()
-								).put(
-										"input",
-										HashMapBuilder.<String, Object>put(
-												"text", ssml
-										).build()
-								).put(
-										"voice",
-										HashMapBuilder.<String, Object>put(
-												"languageCode", languageCode
-										).put(
-												"name", voiceName
-										).build()
-								).build()
-						).toString();
-
 						String response = post(
-								_getGoogleAccessToken(),
-								ttsPayload,
-								UriComponentsBuilder.fromUriString(
-										"https://texttospeech.googleapis.com/v1beta1" +
-												"/text:synthesize"
-								).build(
-								).toUri());
-
-						// --- DEBUG 7: TTS Response and Decoding ---
-						System.out.println("DEBUG: TTS Response for chunk " + chunkIndex + " received (first 200 chars): " + response.substring(0, Math.min(response.length(), 200)) + "...");
+							_getGoogleAccessToken(),
+							new JSONObject(
+								HashMapBuilder.<String, Object>put(
+									"audioConfig",
+									HashMapBuilder.<String, Object>put(
+										"audioEncoding", "MP3"
+									).build()
+								).put(
+									"input",
+									HashMapBuilder.<String, Object>put(
+										"text", ssml
+									).build()
+								).put(
+									"voice",
+									HashMapBuilder.<String, Object>put(
+										"languageCode", languageCode
+									).put(
+										"name", voiceName
+									).build()
+								).build()
+							).toString(),
+							UriComponentsBuilder.fromUriString(
+								"https://texttospeech.googleapis.com/v1beta1" +
+									"/text:synthesize"
+							).build(
+							).toUri());
 
 						byteArrayOutputStream.write(
-								Base64.getDecoder(
-								).decode(
-										new JSONObject(
-												response
-										).getString(
-												"audioContent"
-										)
-								));
+							Base64.getDecoder(
+							).decode(
+								new JSONObject(
+									response
+								).getString(
+									"audioContent"
+								)
+							));
 					}
 
-					// --- STEP 4.2: Final Base64 Encoding and Return ---
 					String audioContentBase64 = Base64.getEncoder(
 					).encodeToString(
-							byteArrayOutputStream.toByteArray()
+						byteArrayOutputStream.toByteArray()
 					);
 
-					System.out.println("DEBUG: Successfully generated new Base64 audio. Returning new audio (Base64 size: " + audioContentBase64.length() + ")");
-
 					return ResponseEntity.ok(
-							new JSONObject(
-							).put(
-									"audioContentBase64", audioContentBase64
-							).put(
-									"id", documentJSONObject.optString("id", null)
-							).toString());
+						new JSONObject(
+						).put(
+							"audioContentBase64", audioContentBase64
+						).put(
+							"id", documentJSONObject.optString("id", null)
+						).toString());
 				}
 			}
-			// If document was not found OR if document was found but dates were valid (lessonIsNewer was false)
-			// Fall through to returning the contentUrl from the existing cache document.
-
-			// --- STEP 5: Return Cached Content URL (Valid Cache or No Document Found/Created) ---
-			String contentUrl = documentJSONObject != null ? documentJSONObject.optString("contentUrl", "NULL_OR_MISSING") : "NO_DOCUMENT_OBJECT_CREATED";
-			System.out.println("DEBUG: Returning Content URL (Cache Valid or New Audio not Generated). URL Status: " + contentUrl);
-
-			// Check if documentJSONObject is still null (no document was ever found in STEP 2.1)
-			if (documentJSONObject == null) {
-				System.out.println("DEBUG: documentJSONObject is null. Returning 404/Error as content URL cannot be retrieved.");
-				// This case usually requires more specific error handling depending on expected behavior
-				return ResponseEntity.status(
-						HttpStatus.NOT_FOUND
-				).body(
-						"No document found and new audio was not generated/saved."
-				);
-			}
-
 
 			return ResponseEntity.ok(
 			).contentType(
-					MediaType.APPLICATION_JSON
+				MediaType.APPLICATION_JSON
 			).body(
-					new JSONObject(
-					).put(
-							"contentUrl",
-							documentJSONObject.optString("contentUrl", null)
-					).toString(
-							2
-					)
+				new JSONObject(
+				).put(
+					"contentUrl",
+					documentJSONObject.optString("contentUrl", null)
+				).toString(
+					2
+				)
 			);
 		}
 		catch (Exception exception) {
-			// --- DEBUG 8: Critical Error Handling ---
-			System.err.println("!!! CRITICAL ERROR in getLessonAudioBase64 !!!");
-			System.err.println("Error Message: " + exception.getMessage());
-			exception.printStackTrace(System.err); // Print the full stack trace for detailed debugging
-
 			return ResponseEntity.status(
-					500
+				500
 			).body(
-					"Error: " + exception.getMessage()
+				"Error: " + exception.getMessage()
 			);
-		}
-		finally {
-			System.out.println("--- DEBUG: EXITING getLessonAudioBase64 ---");
 		}
 	}
 

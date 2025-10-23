@@ -20,8 +20,6 @@ import com.liferay.portal.kernel.util.Validator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import java.net.URI;
-
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -119,11 +117,6 @@ public class LearnRestController extends BaseRestController {
 				if ((message != null) && message.contains("404")) {
 					documentsJSONObject = null;
 				}
-				else {
-					exception.printStackTrace();
-
-					throw exception;
-				}
 			}
 
 			OffsetDateTime lessonDateModified = OffsetDateTime.parse(
@@ -202,22 +195,21 @@ public class LearnRestController extends BaseRestController {
 				};
 
 				if (documentsJSONObject == null) {
-					JSONObject documentMetadataJSONObject = new JSONObject(
-					).put(
-						"title", fileName
-					).put(
-						"externalReferenceCode",
-						StringUtil.toUpperCase(fileName)
-					).put(
-						"fileName", fileName
-					).put(
-						"viewableBy", "Anyone"
-					);
-
 					MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
 					builder.part(
-						"document", documentMetadataJSONObject.toString(),
+						"document",
+						new JSONObject(
+						).put(
+							"title", fileName
+						).put(
+							"externalReferenceCode",
+							StringUtil.toUpperCase(fileName)
+						).put(
+							"fileName", fileName
+						).put(
+							"viewableBy", "Anyone"
+						).toString(),
 						MediaType.APPLICATION_JSON);
 
 					builder.part(
@@ -227,19 +219,17 @@ public class LearnRestController extends BaseRestController {
 					MultiValueMap<String, HttpEntity<?>> multipartBody =
 						builder.build();
 
-					URI uri = UriComponentsBuilder.fromHttpUrl(
-						_protocol + "://" + _mainDomain
-					).path(
-						"/o/headless-delivery/v1.0/document-folders/" +
-							_folderId + "/documents"
-					).build(
-					).toUri();
-
 					try {
 						String uploadResponse = WebClient.create(
 						).post(
 						).uri(
-							uri
+							UriComponentsBuilder.fromHttpUrl(
+								_protocol + "://" + _mainDomain
+							).path(
+								"/o/headless-delivery/v1.0/document-folders/" +
+									_folderId + "/documents"
+							).build(
+							).toUri()
 						).contentType(
 							MediaType.MULTIPART_FORM_DATA
 						).header(
@@ -251,22 +241,22 @@ public class LearnRestController extends BaseRestController {
 							String.class
 						).block();
 
-						JSONObject uploadJSONJSONObject = new JSONObject(
-							uploadResponse);
-
-						String contentUrl = uploadJSONJSONObject.optString(
-							"contentUrl", null);
-
-						JSONObject responseJSONObject = new JSONObject(
-						).put(
-							"contentUrl", contentUrl
+						String contentUrl = new JSONObject(
+							uploadResponse
+						).optString(
+							"contentUrl", null
 						);
 
 						return ResponseEntity.ok(
 						).contentType(
 							MediaType.APPLICATION_JSON
 						).body(
-							responseJSONObject.toString(2)
+							new JSONObject(
+							).put(
+								"contentUrl", contentUrl
+							).toString(
+								2
+							)
 						);
 					}
 					catch (WebClientResponseException
@@ -281,7 +271,8 @@ public class LearnRestController extends BaseRestController {
 									getResponseBodyAsString()));
 
 						throw new RuntimeException(
-							"Failed to upload to the Liferay API", webClientResponseException);
+							"Failed to upload to the Liferay API",
+							webClientResponseException);
 					}
 				}
 				else {

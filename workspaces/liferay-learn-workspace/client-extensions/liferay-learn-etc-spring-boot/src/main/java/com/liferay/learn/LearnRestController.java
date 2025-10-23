@@ -201,12 +201,12 @@ public class LearnRestController extends BaseRestController {
 						"document",
 						new JSONObject(
 						).put(
-							"title", fileName
-						).put(
 							"externalReferenceCode",
 							StringUtil.toUpperCase(fileName)
 						).put(
 							"fileName", fileName
+						).put(
+							"title", fileName
 						).put(
 							"viewableBy", "Anyone"
 						).toString(),

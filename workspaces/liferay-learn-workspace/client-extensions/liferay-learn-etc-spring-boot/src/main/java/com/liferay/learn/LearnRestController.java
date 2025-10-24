@@ -38,14 +38,12 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -69,9 +67,8 @@ public class LearnRestController extends BaseRestController {
 	@GetMapping("/lesson/{lessonId}/audio/base64")
 	@ResponseBody
 	public ResponseEntity<Object> getLessonAudioBase64(
-		@AuthenticationPrincipal Jwt jwt, @PathVariable long lessonId,
-		@RequestParam String languageCode, @RequestParam String voiceName,
-		@RequestParam String voiceType) {
+		@PathVariable long lessonId, @RequestParam String languageCode,
+		@RequestParam String voiceName, @RequestParam String voiceType) {
 
 		try {
 			JSONObject lessonJSONObject = new JSONObject(
@@ -97,6 +94,7 @@ public class LearnRestController extends BaseRestController {
 			String fileName = StringBundler.concat(
 				"lesson-", lessonId, "-", voiceType, ".mp3");
 
+			String contentUrl = null;
 			JSONObject jsonObject = null;
 
 			try {
@@ -112,43 +110,49 @@ public class LearnRestController extends BaseRestController {
 						).toUri()));
 			}
 			catch (WebClientResponseException webClientResponseException) {
-				if (webClientResponseException.getStatusCode() !=
+				if (webClientResponseException.getStatusCode() ==
 						HttpStatus.NOT_FOUND) {
 
+					String fileResource = _generateAudioResource(
+						content, fileName, languageCode, voiceName);
+
+					contentUrl = new JSONObject(
+						fileResource
+					).optString(
+						"contentUrl", null
+					);
+				}
+				else {
 					throw webClientResponseException;
 				}
 			}
 
-			OffsetDateTime lessonDateModified = OffsetDateTime.parse(
-				lessonJSONObject.getString("dateModified")
-			).truncatedTo(
-				ChronoUnit.MINUTES
-			);
-
-			OffsetDateTime documentDateModified = OffsetDateTime.MIN;
-
 			if (jsonObject != null) {
-				documentDateModified = OffsetDateTime.parse(
+				OffsetDateTime lessonDateModified = OffsetDateTime.parse(
+					lessonJSONObject.getString("dateModified")
+				).truncatedTo(
+					ChronoUnit.MINUTES
+				);
+
+				OffsetDateTime documentDateModified = OffsetDateTime.parse(
 					jsonObject.getString("dateModified")
 				).truncatedTo(
 					ChronoUnit.MINUTES
 				);
-			}
 
-			String contentUrl;
+				if (lessonDateModified.isAfter(documentDateModified)) {
+					String fileResource = _generateAudioResource(
+						content, fileName, languageCode, voiceName);
 
-			if (lessonDateModified.isAfter(documentDateModified)) {
-				ResponseEntity<String> fileResource = _generateAudioResource(
-					content, voiceName, languageCode, fileName);
-
-				contentUrl = new JSONObject(
-					fileResource.getBody()
-				).optString(
-					"contentUrl", null
-				);
-			}
-			else {
-				contentUrl = jsonObject.optString("contentUrl", null);
+					contentUrl = new JSONObject(
+						fileResource
+					).optString(
+						"contentUrl", null
+					);
+				}
+				else {
+					contentUrl = jsonObject.optString("contentUrl", null);
+				}
 			}
 
 			return ResponseEntity.ok(
@@ -479,9 +483,9 @@ public class LearnRestController extends BaseRestController {
 			new String[] {" ", " ", " ", "&", "<", ">", "\"", "'"});
 	}
 
-	private ResponseEntity<String> _generateAudioResource(
-			String content, String voiceName, String languageCode,
-			String fileName)
+	private String _generateAudioResource(
+			String content, String fileName, String languageCode,
+			String voiceName)
 		throws Exception {
 
 		ByteArrayOutputStream byteArrayOutputStream =
@@ -543,80 +547,59 @@ public class LearnRestController extends BaseRestController {
 
 		MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
-		JSONObject documentJSONObject = new JSONObject(
-		).put(
-			"documentFolderId", _folderId
-		).put(
-			"externalReferenceCode", StringUtil.toUpperCase(fileName)
-		).put(
-			"fileName", fileName
-		).put(
-			"title", fileName
-		).put(
-			"viewableBy", "Anyone"
-		);
-
 		builder.part(
-			"document", documentJSONObject.toString(),
+			"document",
+			new JSONObject(
+			).put(
+				"documentFolderId", _folderId
+			).put(
+				"externalReferenceCode", StringUtil.toUpperCase(fileName)
+			).put(
+				"fileName", fileName
+			).put(
+				"title", fileName
+			).put(
+				"viewableBy", "Anyone"
+			).toString(),
 			MediaType.APPLICATION_JSON);
 
 		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
 
-		MultiValueMap<String, HttpEntity<?>> multipartBody = builder.build();
-
-		try {
-			String uploadResponse = WebClient.create(
-			).put(
-			).uri(
-				UriComponentsBuilder.fromHttpUrl(
-					_protocol + "://" + _mainDomain
-				).path(
-					StringBundler.concat(
-						"/o/headless-delivery/v1.0/sites/", _siteId,
-						"/documents/by-external-reference-code/",
-						StringUtil.toUpperCase(fileName))
-				).build(
-				).toUri()
-			).contentType(
-				MediaType.MULTIPART_FORM_DATA
-			).header(
-				HttpHeaders.AUTHORIZATION, _getAuthorization()
-			).body(
-				BodyInserters.fromMultipartData(multipartBody)
-			).retrieve(
-			).bodyToMono(
-				String.class
-			).block();
-
-			String contentUrl = new JSONObject(
-				uploadResponse
-			).optString(
-				"contentUrl", null
-			);
-
-			return ResponseEntity.ok(
-			).contentType(
-				MediaType.APPLICATION_JSON
-			).body(
-				new JSONObject(
-				).put(
-					"contentUrl", contentUrl
-				).toString(
-					2
-				)
-			);
-		}
-		catch (WebClientResponseException webClientResponseException) {
-			System.err.println(
+		String response = WebClient.create(
+		).put(
+		).uri(
+			UriComponentsBuilder.fromHttpUrl(
+				_protocol + "://" + _mainDomain
+			).path(
 				StringBundler.concat(
-					"Failed in Liferay (",
-					webClientResponseException.getStatusCode(), "): ",
-					webClientResponseException.getResponseBodyAsString()));
+					"/o/headless-delivery/v1.0/sites/", _siteId,
+					"/documents/by-external-reference-code/",
+					StringUtil.toUpperCase(fileName))
+			).build(
+			).toUri()
+		).contentType(
+			MediaType.MULTIPART_FORM_DATA
+		).header(
+			HttpHeaders.AUTHORIZATION, _getAuthorization()
+		).body(
+			BodyInserters.fromMultipartData(builder.build())
+		).retrieve(
+		).bodyToMono(
+			String.class
+		).block();
 
-			throw new RuntimeException(
-				"Failed to upload to the Liferay API",
-				webClientResponseException);
-		}
+		String contentUrl = new JSONObject(
+			response
+		).optString(
+			"contentUrl", null
+		);
+
+		return new JSONObject(
+		).put(
+			"contentUrl", contentUrl
+		).toString(
+			2
+		);
 	}
 
 	private String _getAuthorization() {
@@ -903,11 +886,14 @@ public class LearnRestController extends BaseRestController {
 	private static final Pattern _trPattern = Pattern.compile(
 		"(?is)<tr[^>]*>(.*?)</tr>");
 
-	@Value("${folder.id}")
+	@Value("${liferay.learn.documents.media.folder.id}")
 	private long _folderId;
 
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;
+
+	@Autowired
+	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 
 	@Value("${com.liferay.lxc.dxp.mainDomain}")
 	private String _mainDomain;
@@ -918,6 +904,4 @@ public class LearnRestController extends BaseRestController {
 	@Value("${liferay.learn.dxp.site.group.id}")
 	private String _siteId;
 
-	@Autowired
-	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 }

@@ -97,10 +97,10 @@ public class LearnRestController extends BaseRestController {
 			String fileName = StringBundler.concat(
 				"lesson-", lessonId, "-", voiceType, ".mp3");
 
-			JSONObject documentsJSONObject = null;
+			JSONObject jsonObject = null;
 
 			try {
-				documentsJSONObject = new JSONObject(
+				jsonObject = new JSONObject(
 					get(
 						"",
 						UriComponentsBuilder.fromPath(
@@ -111,11 +111,11 @@ public class LearnRestController extends BaseRestController {
 						).build(
 						).toUri()));
 			}
-			catch (Exception exception) {
-				String message = exception.getMessage();
+			catch (WebClientResponseException webClientResponseException) {
+				if (webClientResponseException.getStatusCode() !=
+						HttpStatus.NOT_FOUND) {
 
-				if ((message != null) && message.contains("404")) {
-					documentsJSONObject = null;
+					throw webClientResponseException;
 				}
 			}
 
@@ -127,201 +127,28 @@ public class LearnRestController extends BaseRestController {
 
 			OffsetDateTime documentDateModified = OffsetDateTime.MIN;
 
-			if (documentsJSONObject != null) {
+			if (jsonObject != null) {
 				documentDateModified = OffsetDateTime.parse(
-					documentsJSONObject.getString("dateModified")
+					jsonObject.getString("dateModified")
 				).truncatedTo(
 					ChronoUnit.MINUTES
 				);
 			}
 
+			String contentUrl;
+
 			if (lessonDateModified.isAfter(documentDateModified)) {
-				ByteArrayOutputStream byteArrayOutputStream =
-					new ByteArrayOutputStream();
+				ResponseEntity<String> fileResource = _generateAudioResource(
+					content, voiceName, languageCode, fileName);
 
-				List<String> ssmls = _splitSsml(
-					content.replaceAll("\\bLiferay\\b", "Life-ray"), 5000);
-
-				for (String ssml : ssmls) {
-					String response = post(
-						_getGoogleAccessToken(),
-						new JSONObject(
-							HashMapBuilder.<String, Object>put(
-								"audioConfig",
-								HashMapBuilder.<String, Object>put(
-									"audioEncoding", "MP3"
-								).build()
-							).put(
-								"input",
-								HashMapBuilder.<String, Object>put(
-									"text", ssml
-								).build()
-							).put(
-								"voice",
-								HashMapBuilder.<String, Object>put(
-									"languageCode", languageCode
-								).put(
-									"name", voiceName
-								).build()
-							).build()
-						).toString(),
-						UriComponentsBuilder.fromUriString(
-							"https://texttospeech.googleapis.com/v1beta1" +
-								"/text:synthesize"
-						).build(
-						).toUri());
-
-					byteArrayOutputStream.write(
-						Base64.getDecoder(
-						).decode(
-							new JSONObject(
-								response
-							).getString(
-								"audioContent"
-							)
-						));
-				}
-
-				byte[] fullAudioBytes = byteArrayOutputStream.toByteArray();
-
-				ByteArrayResource fileResource = new ByteArrayResource(
-					fullAudioBytes) {
-
-					@Override
-					public String getFilename() {
-						return fileName;
-					}
-
-				};
-
-				if (documentsJSONObject == null) {
-					MultipartBodyBuilder builder = new MultipartBodyBuilder();
-
-					builder.part(
-						"document",
-						new JSONObject(
-						).put(
-							"externalReferenceCode",
-							StringUtil.toUpperCase(fileName)
-						).put(
-							"fileName", fileName
-						).put(
-							"title", fileName
-						).put(
-							"viewableBy", "Anyone"
-						).toString(),
-						MediaType.APPLICATION_JSON);
-
-					builder.part(
-						"file", fileResource,
-						MediaType.APPLICATION_OCTET_STREAM);
-
-					MultiValueMap<String, HttpEntity<?>> multipartBody =
-						builder.build();
-
-					try {
-						String uploadResponse = WebClient.create(
-						).post(
-						).uri(
-							UriComponentsBuilder.fromHttpUrl(
-								_protocol + "://" + _mainDomain
-							).path(
-								"/o/headless-delivery/v1.0/document-folders/" +
-									_folderId + "/documents"
-							).build(
-							).toUri()
-						).contentType(
-							MediaType.MULTIPART_FORM_DATA
-						).header(
-							HttpHeaders.AUTHORIZATION, _getAuthorization()
-						).body(
-							BodyInserters.fromMultipartData(multipartBody)
-						).retrieve(
-						).bodyToMono(
-							String.class
-						).block();
-
-						String contentUrl = new JSONObject(
-							uploadResponse
-						).optString(
-							"contentUrl", null
-						);
-
-						return ResponseEntity.ok(
-						).contentType(
-							MediaType.APPLICATION_JSON
-						).body(
-							new JSONObject(
-							).put(
-								"contentUrl", contentUrl
-							).toString(
-								2
-							)
-						);
-					}
-					catch (WebClientResponseException
-								webClientResponseException) {
-
-						System.err.println(
-							StringBundler.concat(
-								"Failed in Liferay (",
-								webClientResponseException.getStatusCode(),
-								"): ",
-								webClientResponseException.
-									getResponseBodyAsString()));
-
-						throw new RuntimeException(
-							"Failed to upload to the Liferay API",
-							webClientResponseException);
-					}
-				}
-				else {
-					long documentId = documentsJSONObject.getLong("id");
-
-					MultipartBodyBuilder builder = new MultipartBodyBuilder();
-
-					builder.part(
-						"file", fileResource,
-						MediaType.APPLICATION_OCTET_STREAM);
-
-					MultiValueMap<String, HttpEntity<?>> multipartBody =
-						builder.build();
-
-					String updateResponse = WebClient.create(
-					).put(
-					).uri(
-						UriComponentsBuilder.fromHttpUrl(
-							_protocol + "://" + _mainDomain
-						).path(
-							"/o/headless-delivery/v1.0/documents/" + documentId
-						).build(
-						).toUri()
-					).contentType(
-						MediaType.MULTIPART_FORM_DATA
-					).header(
-						HttpHeaders.AUTHORIZATION, _getAuthorization()
-					).body(
-						BodyInserters.fromMultipartData(multipartBody)
-					).retrieve(
-					).bodyToMono(
-						String.class
-					).block();
-
-					return ResponseEntity.ok(
-					).contentType(
-						MediaType.APPLICATION_JSON
-					).body(
-						new JSONObject(
-						).put(
-							"contentUrl",
-							new JSONObject(
-								updateResponse
-							).getString(
-								"contentUrl"
-							)
-						).toString()
-					);
-				}
+				contentUrl = new JSONObject(
+					fileResource.getBody()
+				).optString(
+					"contentUrl", null
+				);
+			}
+			else {
+				contentUrl = jsonObject.optString("contentUrl", null);
 			}
 
 			return ResponseEntity.ok(
@@ -330,8 +157,7 @@ public class LearnRestController extends BaseRestController {
 			).body(
 				new JSONObject(
 				).put(
-					"contentUrl",
-					documentsJSONObject.optString("contentUrl", null)
+					"contentUrl", contentUrl
 				).toString(
 					2
 				)
@@ -653,6 +479,146 @@ public class LearnRestController extends BaseRestController {
 			new String[] {" ", " ", " ", "&", "<", ">", "\"", "'"});
 	}
 
+	private ResponseEntity<String> _generateAudioResource(
+			String content, String voiceName, String languageCode,
+			String fileName)
+		throws Exception {
+
+		ByteArrayOutputStream byteArrayOutputStream =
+			new ByteArrayOutputStream();
+
+		List<String> ssmls = _splitSsml(
+			content.replaceAll("\\bLiferay\\b", "Life-ray"), 5000);
+
+		for (String ssml : ssmls) {
+			String response = post(
+				_getGoogleAccessToken(),
+				new JSONObject(
+					HashMapBuilder.<String, Object>put(
+						"audioConfig",
+						HashMapBuilder.<String, Object>put(
+							"audioEncoding", "MP3"
+						).build()
+					).put(
+						"input",
+						HashMapBuilder.<String, Object>put(
+							"text", ssml
+						).build()
+					).put(
+						"voice",
+						HashMapBuilder.<String, Object>put(
+							"languageCode", languageCode
+						).put(
+							"name", voiceName
+						).build()
+					).build()
+				).toString(),
+				UriComponentsBuilder.fromUriString(
+					"https://texttospeech.googleapis.com/v1beta1" +
+						"/text:synthesize"
+				).build(
+				).toUri());
+
+			byteArrayOutputStream.write(
+				Base64.getDecoder(
+				).decode(
+					new JSONObject(
+						response
+					).getString(
+						"audioContent"
+					)
+				));
+		}
+
+		byte[] fullAudioBytes = byteArrayOutputStream.toByteArray();
+
+		ByteArrayResource fileResource = new ByteArrayResource(fullAudioBytes) {
+
+			@Override
+			public String getFilename() {
+				return fileName;
+			}
+
+		};
+
+		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+		JSONObject documentJSONObject = new JSONObject(
+		).put(
+			"documentFolderId", _folderId
+		).put(
+			"externalReferenceCode", StringUtil.toUpperCase(fileName)
+		).put(
+			"fileName", fileName
+		).put(
+			"title", fileName
+		).put(
+			"viewableBy", "Anyone"
+		);
+
+		builder.part(
+			"document", documentJSONObject.toString(),
+			MediaType.APPLICATION_JSON);
+
+		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
+
+		MultiValueMap<String, HttpEntity<?>> multipartBody = builder.build();
+
+		try {
+			String uploadResponse = WebClient.create(
+			).put(
+			).uri(
+				UriComponentsBuilder.fromHttpUrl(
+					_protocol + "://" + _mainDomain
+				).path(
+					StringBundler.concat(
+						"/o/headless-delivery/v1.0/sites/", _siteId,
+						"/documents/by-external-reference-code/",
+						StringUtil.toUpperCase(fileName))
+				).build(
+				).toUri()
+			).contentType(
+				MediaType.MULTIPART_FORM_DATA
+			).header(
+				HttpHeaders.AUTHORIZATION, _getAuthorization()
+			).body(
+				BodyInserters.fromMultipartData(multipartBody)
+			).retrieve(
+			).bodyToMono(
+				String.class
+			).block();
+
+			String contentUrl = new JSONObject(
+				uploadResponse
+			).optString(
+				"contentUrl", null
+			);
+
+			return ResponseEntity.ok(
+			).contentType(
+				MediaType.APPLICATION_JSON
+			).body(
+				new JSONObject(
+				).put(
+					"contentUrl", contentUrl
+				).toString(
+					2
+				)
+			);
+		}
+		catch (WebClientResponseException webClientResponseException) {
+			System.err.println(
+				StringBundler.concat(
+					"Failed in Liferay (",
+					webClientResponseException.getStatusCode(), "): ",
+					webClientResponseException.getResponseBodyAsString()));
+
+			throw new RuntimeException(
+				"Failed to upload to the Liferay API",
+				webClientResponseException);
+		}
+	}
+
 	private String _getAuthorization() {
 		return _liferayOAuth2AccessTokenManager.getAuthorization(
 			"liferay-learn-etc-spring-boot-oahs");
@@ -938,13 +904,10 @@ public class LearnRestController extends BaseRestController {
 		"(?is)<tr[^>]*>(.*?)</tr>");
 
 	@Value("${folder.id}")
-	private String _folderId;
+	private long _folderId;
 
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;
-
-	@Autowired
-	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 
 	@Value("${com.liferay.lxc.dxp.mainDomain}")
 	private String _mainDomain;
@@ -955,4 +918,6 @@ public class LearnRestController extends BaseRestController {
 	@Value("${liferay.learn.dxp.site.group.id}")
 	private String _siteId;
 
+	@Autowired
+	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 }

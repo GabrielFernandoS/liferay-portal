@@ -94,7 +94,6 @@ public class LearnRestController extends BaseRestController {
 			String fileName = StringBundler.concat(
 				"lesson-", lessonId, "-", voiceType, ".mp3");
 
-			String contentUrl = null;
 			JSONObject jsonObject = null;
 
 			try {
@@ -110,21 +109,16 @@ public class LearnRestController extends BaseRestController {
 						).toUri()));
 			}
 			catch (WebClientResponseException webClientResponseException) {
-				if (webClientResponseException.getStatusCode() ==
+				if (webClientResponseException.getStatusCode() !=
 						HttpStatus.NOT_FOUND) {
 
-					String fileResource = _generateAudioResource(
-						content, fileName, languageCode, voiceName);
-
-					contentUrl = new JSONObject(
-						fileResource
-					).optString(
-						"contentUrl", null
-					);
-				}
-				else {
 					throw webClientResponseException;
 				}
+
+				Map<String, Object> fileResource = _generateAudioResource(
+					content, fileName, languageCode, voiceName);
+
+				return ResponseEntity.ok(fileResource);
 			}
 
 			if (jsonObject != null) {
@@ -141,31 +135,16 @@ public class LearnRestController extends BaseRestController {
 				);
 
 				if (lessonDateModified.isAfter(documentDateModified)) {
-					String fileResource = _generateAudioResource(
+					Map<String, Object> fileResource = _generateAudioResource(
 						content, fileName, languageCode, voiceName);
 
-					contentUrl = new JSONObject(
-						fileResource
-					).optString(
-						"contentUrl", null
-					);
-				}
-				else {
-					contentUrl = jsonObject.optString("contentUrl", null);
+					return ResponseEntity.ok(fileResource);
 				}
 			}
 
 			return ResponseEntity.ok(
-			).contentType(
-				MediaType.APPLICATION_JSON
-			).body(
-				new JSONObject(
-				).put(
-					"contentUrl", contentUrl
-				).toString(
-					2
-				)
-			);
+				Collections.singletonMap(
+					"contentUrl", jsonObject.getString("contentUrl")));
 		}
 		catch (Exception exception) {
 			return ResponseEntity.status(
@@ -483,7 +462,7 @@ public class LearnRestController extends BaseRestController {
 			new String[] {" ", " ", " ", "&", "<", ">", "\"", "'"});
 	}
 
-	private String _generateAudioResource(
+	private Map<String, Object> _generateAudioResource(
 			String content, String fileName, String languageCode,
 			String voiceName)
 		throws Exception {
@@ -594,12 +573,7 @@ public class LearnRestController extends BaseRestController {
 			"contentUrl", null
 		);
 
-		return new JSONObject(
-		).put(
-			"contentUrl", contentUrl
-		).toString(
-			2
-		);
+		return Collections.singletonMap("contentUrl", contentUrl);
 	}
 
 	private String _getAuthorization() {
@@ -886,7 +860,7 @@ public class LearnRestController extends BaseRestController {
 	private static final Pattern _trPattern = Pattern.compile(
 		"(?is)<tr[^>]*>(.*?)</tr>");
 
-	@Value("${liferay.learn.documents.media.folder.id}")
+	@Value("${liferay.learn.audio.lessons.document.folder.id}")
 	private long _folderId;
 
 	@Value("${liferay.learn.google.credentials}")

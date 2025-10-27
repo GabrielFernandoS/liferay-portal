@@ -20,6 +20,8 @@ import com.liferay.portal.kernel.util.Validator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
+import java.net.URI;
+
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -38,6 +40,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -116,7 +119,7 @@ public class LearnRestController extends BaseRestController {
 				}
 
 				Map<String, Object> fileResource = _generateAudioResource(
-					content, fileName, languageCode, voiceName);
+					content, false, fileName, languageCode, voiceName);
 
 				return ResponseEntity.ok(fileResource);
 			}
@@ -136,7 +139,7 @@ public class LearnRestController extends BaseRestController {
 
 				if (lessonDateModified.isAfter(documentDateModified)) {
 					Map<String, Object> fileResource = _generateAudioResource(
-						content, fileName, languageCode, voiceName);
+						content, true, fileName, languageCode, voiceName);
 
 					return ResponseEntity.ok(fileResource);
 				}
@@ -463,8 +466,8 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private Map<String, Object> _generateAudioResource(
-			String content, String fileName, String languageCode,
-			String voiceName)
+			String content, boolean fileExists, String fileName,
+			String languageCode, String voiceName)
 		throws Exception {
 
 		ByteArrayOutputStream byteArrayOutputStream =
@@ -513,9 +516,8 @@ public class LearnRestController extends BaseRestController {
 				));
 		}
 
-		byte[] fullAudioBytes = byteArrayOutputStream.toByteArray();
-
-		ByteArrayResource fileResource = new ByteArrayResource(fullAudioBytes) {
+		ByteArrayResource fileResource = new ByteArrayResource(
+			byteArrayOutputStream.toByteArray()) {
 
 			@Override
 			public String getFilename() {
@@ -544,10 +546,11 @@ public class LearnRestController extends BaseRestController {
 
 		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
 
-		String response = WebClient.create(
-		).put(
-		).uri(
-			UriComponentsBuilder.fromHttpUrl(
+		URI uri = null;
+		HttpMethod method = null;
+
+		if (fileExists) {
+			uri = UriComponentsBuilder.fromHttpUrl(
 				_protocol + "://" + _mainDomain
 			).path(
 				StringBundler.concat(
@@ -555,25 +558,46 @@ public class LearnRestController extends BaseRestController {
 					"/documents/by-external-reference-code/",
 					StringUtil.toUpperCase(fileName))
 			).build(
-			).toUri()
+			).toUri();
+			method = HttpMethod.PUT;
+		}
+		else {
+			uri = UriComponentsBuilder.fromHttpUrl(
+				_protocol + "://" + _mainDomain
+			).path(
+				"/o/headless-delivery/v1.0/document-folders/" + _folderId +
+					"/documents"
+			).build(
+			).toUri();
+			method = HttpMethod.POST;
+		}
+
+		WebClient webClient = WebClient.create();
+
+		WebClient.RequestBodySpec requestSpec = webClient.method(
+			method
+		).uri(
+			uri
 		).contentType(
 			MediaType.MULTIPART_FORM_DATA
 		).header(
 			HttpHeaders.AUTHORIZATION, _getAuthorization()
-		).body(
+		);
+
+		String response = requestSpec.body(
 			BodyInserters.fromMultipartData(builder.build())
 		).retrieve(
 		).bodyToMono(
 			String.class
 		).block();
 
-		String contentUrl = new JSONObject(
-			response
-		).optString(
-			"contentUrl", null
-		);
-
-		return Collections.singletonMap("contentUrl", contentUrl);
+		return Collections.singletonMap(
+			"contentUrl",
+			new JSONObject(
+				response
+			).optString(
+				"contentUrl", null
+			));
 	}
 
 	private String _getAuthorization() {

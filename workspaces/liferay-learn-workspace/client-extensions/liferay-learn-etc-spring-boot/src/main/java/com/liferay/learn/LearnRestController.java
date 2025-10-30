@@ -105,7 +105,7 @@ public class LearnRestController extends BaseRestController {
 						"",
 						UriComponentsBuilder.fromPath(
 							StringBundler.concat(
-								"/o/headless-delivery/v1.0/sites/", _siteId,
+								"/o/headless-delivery/v1.0/sites/", _learnDXPSiteGroupId,
 								"/documents/by-external-reference-code/",
 								StringUtil.toUpperCase(fileName))
 						).build(
@@ -262,7 +262,7 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private String _convertHtmlListToTextInline(String html) {
-		html = _convertHtmlTableToTextInline(html);
+		html = _convertHTMLTableToTextInline(html);
 
 		Matcher matcher = _liPattern.matcher(html);
 
@@ -320,7 +320,7 @@ public class LearnRestController extends BaseRestController {
 		).trim();
 	}
 
-	private String _convertHtmlTableToTextInline(String html) {
+	private String _convertHTMLTableToTextInline(String html) {
 		if (html == null) {
 			return "";
 		}
@@ -548,10 +548,10 @@ public class LearnRestController extends BaseRestController {
 
 		if (documentFolderId != 0) {
 			uri = UriComponentsBuilder.fromHttpUrl(
-				_protocol + "://" + _mainDomain
+				_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
 			).path(
 				StringBundler.concat(
-					"/o/headless-delivery/v1.0/sites/", _siteId,
+					"/o/headless-delivery/v1.0/sites/", _learnDXPSiteGroupId,
 					"/documents/by-external-reference-code/",
 					StringUtil.toUpperCase(fileName))
 			).build(
@@ -560,7 +560,7 @@ public class LearnRestController extends BaseRestController {
 		}
 		else {
 			uri = UriComponentsBuilder.fromHttpUrl(
-				_protocol + "://" + _mainDomain
+				_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
 			).path(
 				"/o/headless-delivery/v1.0/document-folders/" +
 					_documentFolderId + "/documents"
@@ -891,12 +891,12 @@ public class LearnRestController extends BaseRestController {
 	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 
 	@Value("${com.liferay.lxc.dxp.mainDomain}")
-	private String _mainDomain;
+	private String _lxcDXPMainDomain;
 
 	@Value("${com.liferay.lxc.dxp.server.protocol}")
-	private String _protocol;
+	private String _lxcDXPServerProtocol;
 
 	@Value("${liferay.learn.dxp.site.group.id}")
-	private String _siteId;
+	private String _learnDXPSiteGroupId;
 
 }

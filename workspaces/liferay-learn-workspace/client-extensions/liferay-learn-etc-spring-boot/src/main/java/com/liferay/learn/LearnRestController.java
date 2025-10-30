@@ -105,7 +105,8 @@ public class LearnRestController extends BaseRestController {
 						"",
 						UriComponentsBuilder.fromPath(
 							StringBundler.concat(
-								"/o/headless-delivery/v1.0/sites/", _learnDXPSiteGroupId,
+								"/o/headless-delivery/v1.0/sites/",
+								_learnDXPSiteGroupId,
 								"/documents/by-external-reference-code/",
 								StringUtil.toUpperCase(fileName))
 						).build(
@@ -543,12 +544,14 @@ public class LearnRestController extends BaseRestController {
 
 		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
 
-		URI uri = null;
+		String learnDXPBaseURL =
+			_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain;
 		HttpMethod method = null;
+		URI uri = null;
 
 		if (documentFolderId != 0) {
 			uri = UriComponentsBuilder.fromHttpUrl(
-				_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
+				learnDXPBaseURL
 			).path(
 				StringBundler.concat(
 					"/o/headless-delivery/v1.0/sites/", _learnDXPSiteGroupId,
@@ -560,7 +563,7 @@ public class LearnRestController extends BaseRestController {
 		}
 		else {
 			uri = UriComponentsBuilder.fromHttpUrl(
-				_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
+				learnDXPBaseURL
 			).path(
 				"/o/headless-delivery/v1.0/document-folders/" +
 					_documentFolderId + "/documents"
@@ -569,9 +572,8 @@ public class LearnRestController extends BaseRestController {
 			method = HttpMethod.POST;
 		}
 
-		WebClient webClient = WebClient.create();
-
-		WebClient.RequestBodySpec requestSpec = webClient.method(
+		String response = _webClientBuilder.build(
+		).method(
 			method
 		).uri(
 			uri
@@ -579,9 +581,7 @@ public class LearnRestController extends BaseRestController {
 			MediaType.MULTIPART_FORM_DATA
 		).header(
 			HttpHeaders.AUTHORIZATION, _getAuthorization()
-		);
-
-		String response = requestSpec.body(
+		).body(
 			BodyInserters.fromMultipartData(builder.build())
 		).retrieve(
 		).bodyToMono(
@@ -887,6 +887,9 @@ public class LearnRestController extends BaseRestController {
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;
 
+	@Value("${liferay.learn.dxp.site.group.id}")
+	private String _learnDXPSiteGroupId;
+
 	@Autowired
 	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 
@@ -896,7 +899,7 @@ public class LearnRestController extends BaseRestController {
 	@Value("${com.liferay.lxc.dxp.server.protocol}")
 	private String _lxcDXPServerProtocol;
 
-	@Value("${liferay.learn.dxp.site.group.id}")
-	private String _learnDXPSiteGroupId;
+	@Autowired
+	private WebClient.Builder _webClientBuilder;
 
 }

@@ -118,31 +118,28 @@ public class LearnRestController extends BaseRestController {
 					throw webClientResponseException;
 				}
 
-				Map<String, Object> fileResource = _generateAudioResource(
-					content, false, fileName, languageCode, voiceName);
-
-				return ResponseEntity.ok(fileResource);
+				return ResponseEntity.ok(
+					_generateAudioResource(
+						content, 0, fileName, languageCode, voiceName));
 			}
 
-			if (jsonObject != null) {
-				OffsetDateTime lessonDateModified = OffsetDateTime.parse(
-					lessonJSONObject.getString("dateModified")
-				).truncatedTo(
-					ChronoUnit.MINUTES
-				);
+			OffsetDateTime documentDateModified = OffsetDateTime.parse(
+				jsonObject.getString("dateModified")
+			).truncatedTo(
+				ChronoUnit.MINUTES
+			);
 
-				OffsetDateTime documentDateModified = OffsetDateTime.parse(
-					jsonObject.getString("dateModified")
-				).truncatedTo(
-					ChronoUnit.MINUTES
-				);
+			OffsetDateTime lessonDateModified = OffsetDateTime.parse(
+				lessonJSONObject.getString("dateModified")
+			).truncatedTo(
+				ChronoUnit.MINUTES
+			);
 
-				if (lessonDateModified.isAfter(documentDateModified)) {
-					Map<String, Object> fileResource = _generateAudioResource(
-						content, true, fileName, languageCode, voiceName);
-
-					return ResponseEntity.ok(fileResource);
-				}
+			if (lessonDateModified.isAfter(documentDateModified)) {
+				return ResponseEntity.ok(
+					_generateAudioResource(
+						content, _documentFolderId, fileName, languageCode,
+						voiceName));
 			}
 
 			return ResponseEntity.ok(
@@ -272,11 +269,11 @@ public class LearnRestController extends BaseRestController {
 		StringBuffer stringBuffer = new StringBuffer();
 
 		while (matcher.find()) {
-			String openingTag = matcher.group(1);
+			String closingTag = matcher.group(3);
 			String innerContent = matcher.group(
 				2
 			).trim();
-			String closingTag = matcher.group(3);
+			String openingTag = matcher.group(1);
 
 			String text = innerContent.replaceAll(
 				"(?s)<[^>]+>", " "
@@ -328,8 +325,8 @@ public class LearnRestController extends BaseRestController {
 			return "";
 		}
 
-		Matcher tableMatcher = _tablePattern.matcher(html);
 		StringBuffer stringBuffer = new StringBuffer();
+		Matcher tableMatcher = _tablePattern.matcher(html);
 
 		while (tableMatcher.find()) {
 			String tableHtml = tableMatcher.group(1);
@@ -466,7 +463,7 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private Map<String, Object> _generateAudioResource(
-			String content, boolean fileExists, String fileName,
+			String content, long documentFolderId, String fileName,
 			String languageCode, String voiceName)
 		throws Exception {
 
@@ -532,7 +529,7 @@ public class LearnRestController extends BaseRestController {
 			"document",
 			new JSONObject(
 			).put(
-				"documentFolderId", _folderId
+				"documentFolderId", _documentFolderId
 			).put(
 				"externalReferenceCode", StringUtil.toUpperCase(fileName)
 			).put(
@@ -549,7 +546,7 @@ public class LearnRestController extends BaseRestController {
 		URI uri = null;
 		HttpMethod method = null;
 
-		if (fileExists) {
+		if (documentFolderId != 0) {
 			uri = UriComponentsBuilder.fromHttpUrl(
 				_protocol + "://" + _mainDomain
 			).path(
@@ -565,8 +562,8 @@ public class LearnRestController extends BaseRestController {
 			uri = UriComponentsBuilder.fromHttpUrl(
 				_protocol + "://" + _mainDomain
 			).path(
-				"/o/headless-delivery/v1.0/document-folders/" + _folderId +
-					"/documents"
+				"/o/headless-delivery/v1.0/document-folders/" +
+					_documentFolderId + "/documents"
 			).build(
 			).toUri();
 			method = HttpMethod.POST;
@@ -821,11 +818,11 @@ public class LearnRestController extends BaseRestController {
 			"</speak>$", ""
 		).trim();
 
-		ssmlContent = _decodeBasicHtmlEntities(ssmlContent);
-
-		ssmlContent = _convertHtmlListToTextInline(ssmlContent);
-
-		String[] sentences = ssmlContent.split("(?<=[.!?])\\s+");
+		String[] sentences = _convertHtmlListToTextInline(
+			_decodeBasicHtmlEntities(ssmlContent)
+		).split(
+			"(?<=[.!?])\\s+"
+		);
 
 		for (String sentence : sentences) {
 			if ((sb.length() + sentence.length()) > maxLength) {
@@ -885,7 +882,7 @@ public class LearnRestController extends BaseRestController {
 		"(?is)<tr[^>]*>(.*?)</tr>");
 
 	@Value("${liferay.learn.audio.lessons.document.folder.id}")
-	private long _folderId;
+	private long _documentFolderId;
 
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;

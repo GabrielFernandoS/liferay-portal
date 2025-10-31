@@ -121,7 +121,7 @@ public class LearnRestController extends BaseRestController {
 
 				return ResponseEntity.ok(
 					_generateAudioResource(
-						content, 0, fileName, languageCode, voiceName));
+						0, content, fileName, languageCode, voiceName));
 			}
 
 			OffsetDateTime documentDateModified = OffsetDateTime.parse(
@@ -139,7 +139,7 @@ public class LearnRestController extends BaseRestController {
 			if (lessonDateModified.isAfter(documentDateModified)) {
 				return ResponseEntity.ok(
 					_generateAudioResource(
-						content, _documentFolderId, fileName, languageCode,
+						_documentFolderId, content, fileName, languageCode,
 						voiceName));
 			}
 
@@ -262,7 +262,7 @@ public class LearnRestController extends BaseRestController {
 		return ResponseEntity.ok(quizResultMap);
 	}
 
-	private String _convertHtmlListToTextInline(String html) {
+	private String _convertHTMLListToTextInline(String html) {
 		html = _convertHTMLTableToTextInline(html);
 
 		Matcher matcher = _liPattern.matcher(html);
@@ -330,10 +330,10 @@ public class LearnRestController extends BaseRestController {
 		Matcher tableMatcher = _tablePattern.matcher(html);
 
 		while (tableMatcher.find()) {
-			String tableHtml = tableMatcher.group(1);
+			String tableHTML = tableMatcher.group(1);
 
 			List<String> headers = new ArrayList<>();
-			Matcher theadMatcher = _theadPattern.matcher(tableHtml);
+			Matcher theadMatcher = _theadPattern.matcher(tableHTML);
 
 			if (theadMatcher.find()) {
 				Matcher headTrMatcher = _trPattern.matcher(
@@ -345,21 +345,21 @@ public class LearnRestController extends BaseRestController {
 
 					while (headCellsMatcher.find()) {
 						headers.add(
-							_decodeBasicHtmlEntities(
+							_decodeBasicHTMLEntities(
 								headCellsMatcher.group(1)
 							).trim());
 					}
 				}
 			}
 
-			String bodyHtml = tableHtml;
-			Matcher tbodyMatcher = _tbodyPattern.matcher(tableHtml);
+			String bodyHTML = tableHTML;
+			Matcher tbodyMatcher = _tbodyPattern.matcher(tableHTML);
 
 			if (tbodyMatcher.find()) {
-				bodyHtml = tbodyMatcher.group(1);
+				bodyHTML = tbodyMatcher.group(1);
 			}
 
-			Matcher trMatcher = _trPattern.matcher(bodyHtml);
+			Matcher trMatcher = _trPattern.matcher(bodyHTML);
 
 			StringBuilder tableDescription = new StringBuilder("Table: ");
 
@@ -379,7 +379,7 @@ public class LearnRestController extends BaseRestController {
 					}
 				}
 
-				tableDescription.append(sb.toString());
+				tableDescription.append(sb);
 			}
 
 			int row = 0;
@@ -394,7 +394,7 @@ public class LearnRestController extends BaseRestController {
 				List<String> cells = new ArrayList<>();
 
 				while (cellMatcher.find()) {
-					String raw = _decodeBasicHtmlEntities(
+					String raw = _decodeBasicHTMLEntities(
 						cellMatcher.group(1)
 					).trim();
 
@@ -449,7 +449,7 @@ public class LearnRestController extends BaseRestController {
 		return stringBuffer.toString();
 	}
 
-	private String _decodeBasicHtmlEntities(String string) {
+	private String _decodeBasicHTMLEntities(String string) {
 		if (string == null) {
 			return "";
 		}
@@ -464,7 +464,7 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private Map<String, Object> _generateAudioResource(
-			String content, long documentFolderId, String fileName,
+			long documentFolderId, String content, String fileName,
 			String languageCode, String voiceName)
 		throws Exception {
 
@@ -544,9 +544,9 @@ public class LearnRestController extends BaseRestController {
 
 		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
 
+		HttpMethod method = null;
 		String learnDXPBaseURL =
 			_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain;
-		HttpMethod method = null;
 		URI uri = null;
 
 		if (documentFolderId != 0) {
@@ -818,8 +818,8 @@ public class LearnRestController extends BaseRestController {
 			"</speak>$", ""
 		).trim();
 
-		String[] sentences = _convertHtmlListToTextInline(
-			_decodeBasicHtmlEntities(ssmlContent)
+		String[] sentences = _convertHTMLListToTextInline(
+			_decodeBasicHTMLEntities(ssmlContent)
 		).split(
 			"(?<=[.!?])\\s+"
 		);

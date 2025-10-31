@@ -106,7 +106,7 @@ public class LearnRestController extends BaseRestController {
 						UriComponentsBuilder.fromPath(
 							StringBundler.concat(
 								"/o/headless-delivery/v1.0/sites/",
-								_learnDXPSiteGroupId,
+								_siteGroupId,
 								"/documents/by-external-reference-code/",
 								StringUtil.toUpperCase(fileName))
 						).build(
@@ -121,7 +121,7 @@ public class LearnRestController extends BaseRestController {
 
 				return ResponseEntity.ok(
 					_generateAudioResource(
-						0, content, fileName, languageCode, voiceName));
+						content, 0, fileName, languageCode, voiceName));
 			}
 
 			OffsetDateTime documentDateModified = OffsetDateTime.parse(
@@ -139,7 +139,7 @@ public class LearnRestController extends BaseRestController {
 			if (lessonDateModified.isAfter(documentDateModified)) {
 				return ResponseEntity.ok(
 					_generateAudioResource(
-						_documentFolderId, content, fileName, languageCode,
+						content, _documentFolderId, fileName, languageCode,
 						voiceName));
 			}
 
@@ -464,7 +464,7 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private Map<String, Object> _generateAudioResource(
-			long documentFolderId, String content, String fileName,
+			String content, long documentFolderId, String fileName,
 			String languageCode, String voiceName)
 		throws Exception {
 
@@ -545,53 +545,47 @@ public class LearnRestController extends BaseRestController {
 		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
 
 		HttpMethod method = null;
-		String learnDXPBaseURL =
-			_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain;
 		URI uri = null;
 
 		if (documentFolderId != 0) {
-			uri = UriComponentsBuilder.fromHttpUrl(
-				learnDXPBaseURL
-			).path(
-				StringBundler.concat(
-					"/o/headless-delivery/v1.0/sites/", _learnDXPSiteGroupId,
-					"/documents/by-external-reference-code/",
-					StringUtil.toUpperCase(fileName))
-			).build(
-			).toUri();
 			method = HttpMethod.PUT;
+			uri = UriComponentsBuilder.fromPath(
+				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents" +
+					"/by-external-reference-code/{fileName}"
+			).build(
+				_siteGroupId, StringUtil.toUpperCase(fileName)
+			);
 		}
 		else {
-			uri = UriComponentsBuilder.fromHttpUrl(
-				learnDXPBaseURL
-			).path(
-				"/o/headless-delivery/v1.0/document-folders/" +
-					_documentFolderId + "/documents"
-			).build(
-			).toUri();
 			method = HttpMethod.POST;
+			uri = UriComponentsBuilder.fromPath(
+				"/o/headless-delivery/v1.0/document-folders" +
+					"/{documentFolderId}/documents"
+			).build(
+				_documentFolderId
+			);
 		}
-
-		String response = _webClientBuilder.build(
-		).method(
-			method
-		).uri(
-			uri
-		).contentType(
-			MediaType.MULTIPART_FORM_DATA
-		).header(
-			HttpHeaders.AUTHORIZATION, _getAuthorization()
-		).body(
-			BodyInserters.fromMultipartData(builder.build())
-		).retrieve(
-		).bodyToMono(
-			String.class
-		).block();
 
 		return Collections.singletonMap(
 			"contentUrl",
 			new JSONObject(
-				response
+				_webClientBuilder.baseUrl(
+					_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
+				).build(
+				).method(
+					method
+				).uri(
+					uri
+				).contentType(
+					MediaType.MULTIPART_FORM_DATA
+				).header(
+					HttpHeaders.AUTHORIZATION, _getAuthorization()
+				).body(
+					BodyInserters.fromMultipartData(builder.build())
+				).retrieve(
+				).bodyToMono(
+					String.class
+				).block()
 			).optString(
 				"contentUrl", null
 			));
@@ -887,9 +881,6 @@ public class LearnRestController extends BaseRestController {
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;
 
-	@Value("${liferay.learn.dxp.site.group.id}")
-	private String _learnDXPSiteGroupId;
-
 	@Autowired
 	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
 
@@ -898,6 +889,9 @@ public class LearnRestController extends BaseRestController {
 
 	@Value("${com.liferay.lxc.dxp.server.protocol}")
 	private String _lxcDXPServerProtocol;
+
+	@Value("${liferay.learn.dxp.site.group.id}")
+	private String _siteGroupId;
 
 	@Autowired
 	private WebClient.Builder _webClientBuilder;

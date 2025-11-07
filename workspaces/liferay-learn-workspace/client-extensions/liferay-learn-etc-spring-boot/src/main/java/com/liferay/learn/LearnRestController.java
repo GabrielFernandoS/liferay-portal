@@ -100,10 +100,10 @@ public class LearnRestController extends BaseRestController {
 			String fileName = StringBundler.concat(
 				"lesson-", lessonId, "-", voiceName, ".mp3");
 
-			JSONObject jsonObject = null;
+			JSONObject documentJSONObject = null;
 
 			try {
-				jsonObject = new JSONObject(
+				documentJSONObject = new JSONObject(
 					get(
 						"",
 						UriComponentsBuilder.fromPath(
@@ -135,7 +135,7 @@ public class LearnRestController extends BaseRestController {
 
 			if (offsetDateTime.isAfter(
 					OffsetDateTime.parse(
-						jsonObject.getString("dateModified")
+						documentJSONObject.getString("dateModified")
 					).truncatedTo(
 						ChronoUnit.MINUTES
 					))) {
@@ -148,7 +148,7 @@ public class LearnRestController extends BaseRestController {
 
 			return ResponseEntity.ok(
 				Collections.singletonMap(
-					"contentUrl", jsonObject.getString("contentUrl")));
+					"contentUrl", documentJSONObject.getString("contentUrl")));
 		}
 		catch (Exception exception) {
 			return ResponseEntity.status(

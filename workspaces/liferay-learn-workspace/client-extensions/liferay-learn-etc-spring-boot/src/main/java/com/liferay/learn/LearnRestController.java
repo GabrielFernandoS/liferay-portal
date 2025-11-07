@@ -478,7 +478,7 @@ public class LearnRestController extends BaseRestController {
 				));
 		}
 
-		ByteArrayResource fileResource = new ByteArrayResource(
+		ByteArrayResource byteArrayResource = new ByteArrayResource(
 			byteArrayOutputStream.toByteArray()) {
 
 			@Override
@@ -488,9 +488,9 @@ public class LearnRestController extends BaseRestController {
 
 		};
 
-		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+		MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
 
-		builder.part(
+		multipartBodyBuilder.part(
 			"document",
 			new JSONObject(
 			).put(
@@ -506,13 +506,14 @@ public class LearnRestController extends BaseRestController {
 			).toString(),
 			MediaType.APPLICATION_JSON);
 
-		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
+		multipartBodyBuilder.part(
+			"file", byteArrayResource, MediaType.APPLICATION_OCTET_STREAM);
 
-		HttpMethod method = null;
+		HttpMethod httpMethod = null;
 		URI uri = null;
 
 		if (documentFolderId != 0) {
-			method = HttpMethod.PUT;
+			httpMethod = HttpMethod.PUT;
 			uri = UriComponentsBuilder.fromPath(
 				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents" +
 					"/by-external-reference-code/{fileName}"
@@ -521,7 +522,7 @@ public class LearnRestController extends BaseRestController {
 			);
 		}
 		else {
-			method = HttpMethod.POST;
+			httpMethod = HttpMethod.POST;
 			uri = UriComponentsBuilder.fromPath(
 				"/o/headless-delivery/v1.0/document-folders" +
 					"/{documentFolderId}/documents"
@@ -537,7 +538,7 @@ public class LearnRestController extends BaseRestController {
 					_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
 				).build(
 				).method(
-					method
+					httpMethod
 				).uri(
 					uri.toString()
 				).contentType(
@@ -545,7 +546,8 @@ public class LearnRestController extends BaseRestController {
 				).header(
 					HttpHeaders.AUTHORIZATION, _getAuthorization()
 				).body(
-					BodyInserters.fromMultipartData(builder.build())
+					BodyInserters.fromMultipartData(
+						multipartBodyBuilder.build())
 				).retrieve(
 				).bodyToMono(
 					String.class

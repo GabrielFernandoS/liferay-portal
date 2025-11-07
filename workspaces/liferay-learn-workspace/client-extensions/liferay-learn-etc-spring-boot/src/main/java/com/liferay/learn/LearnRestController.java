@@ -307,103 +307,103 @@ public class LearnRestController extends BaseRestController {
 			return "";
 		}
 
-		StringBuffer stringBuffer = new StringBuffer();
-		Matcher tableMatcher = _tablePattern.matcher(html);
+		StringBuilder sb = new StringBuilder();
+		Matcher matcher = _tablePattern.matcher(html);
 
-		while (tableMatcher.find()) {
-			String tableHTML = tableMatcher.group(1);
-
-			List<String> headers = new ArrayList<>();
-			Matcher theadMatcher = _theadPattern.matcher(tableHTML);
-
-			if (theadMatcher.find()) {
-				Matcher headTrMatcher = _trPattern.matcher(
-					theadMatcher.group(1));
-
-				if (headTrMatcher.find()) {
-					Matcher headCellsMatcher = _cellPattern.matcher(
-						headTrMatcher.group(1));
-
-					while (headCellsMatcher.find()) {
-						headers.add(_unescapeHTML(headCellsMatcher.group(1)));
-					}
-				}
-			}
-
-			String bodyHTML = tableHTML;
-			Matcher tbodyMatcher = _tbodyPattern.matcher(tableHTML);
-
-			if (tbodyMatcher.find()) {
-				bodyHTML = tbodyMatcher.group(1);
-			}
-
-			Matcher trMatcher = _trPattern.matcher(bodyHTML);
-
-			StringBundler tableSB = new StringBundler("Table: ");
-
-			if (!headers.isEmpty()) {
-				StringBundler sb = new StringBundler("Column headings: ");
-
-				for (int i = 0; i < headers.size(); i++) {
-					sb.append(headers.get(i));
-
-					if (i < (headers.size() - 1)) {
-						sb.append("; ");
-					}
-					else {
-						sb.append(". ");
-					}
-				}
-
-				tableSB.append(sb);
-			}
-
-			int row = 0;
-
-			while (trMatcher.find()) {
-				row++;
-
-				Matcher cellMatcher = _cellPattern.matcher(trMatcher.group(1));
-				List<String> cells = new ArrayList<>();
-
-				while (cellMatcher.find()) {
-					String raw = _unescapeHTML(cellMatcher.group(1));
-
-					if (Objects.equals(raw, "✔") || Objects.equals(raw, "✓")) {
-						raw = "supported";
-					}
-					else if (raw.isEmpty() || Objects.equals(raw, "&nbsp;")) {
-						raw = "not supported";
-					}
-
-					cells.add(raw);
-				}
-
-				if (!cells.isEmpty()) {
-					tableSB.append("Row ");
-					tableSB.append(row);
-					tableSB.append(". ");
-
-					for (int c = 0; c < cells.size(); c++) {
-						tableSB.append(
-							(c < headers.size()) ? headers.get(c) :
-								("Column " + (c + 1)));
-						tableSB.append(": ");
-						tableSB.append(cells.get(c));
-						tableSB.append(". ");
-					}
-				}
-			}
-
-			tableMatcher.appendReplacement(
-				stringBuffer,
+		while (matcher.find()) {
+			matcher.appendReplacement(
+				sb,
 				Matcher.quoteReplacement(
-					StringUtil.trim(tableSB.toString()) + " "));
+					_convertTableToText(matcher.group(1))));
 		}
 
-		tableMatcher.appendTail(stringBuffer);
+		matcher.appendTail(sb);
 
-		return stringBuffer.toString();
+		return sb.toString();
+	}
+
+	private String _convertTableToText(String tableHTML) {
+		List<String> headers = _extractTableHeaders(tableHTML);
+		List<List<String>> rows = _extractTableRows(tableHTML);
+
+		StringBundler sb = new StringBundler("Table: ");
+
+		if (!headers.isEmpty()) {
+			sb.append("Column headings: ");
+
+			sb.append(String.join("; ", headers));
+			sb.append(". ");
+		}
+
+		for (int i = 0; i < rows.size(); i++) {
+			List<String> cells = rows.get(i);
+
+			if (cells.isEmpty()) {
+				continue;
+			}
+
+			sb.append("Row ");
+			sb.append(i + 1);
+			sb.append(". ");
+
+			for (int j = 0; j < cells.size(); j++) {
+				String header =
+					(j < headers.size()) ? headers.get(j) : "Column " + (j + 1);
+
+				sb.append(header);
+
+				sb.append(": ");
+				sb.append(cells.get(j));
+				sb.append(". ");
+			}
+		}
+
+		return StringUtil.trim(sb.toString()) + " ";
+	}
+
+	private List<String> _extractCells(String rowHTML) {
+		List<String> cells = new ArrayList<>();
+		Matcher cellMatcher = _cellPattern.matcher(rowHTML);
+
+		while (cellMatcher.find()) {
+			String raw = _unescapeHTML(cellMatcher.group(1));
+
+			if (Objects.equals(raw, "✔") || Objects.equals(raw, "✓")) {
+				raw = "supported";
+			}
+			else if (raw.isEmpty() || Objects.equals(raw, "&nbsp;")) {
+				raw = "not supported";
+			}
+
+			cells.add(raw);
+		}
+
+		return cells;
+	}
+
+	private List<String> _extractTableHeaders(String tableHTML) {
+		Matcher matcher = _theadPattern.matcher(tableHTML);
+
+		if (matcher.find()) {
+			Matcher headTrMatcher = _trPattern.matcher(matcher.group(1));
+
+			if (headTrMatcher.find()) {
+				return _extractCells(headTrMatcher.group(1));
+			}
+		}
+
+		return Collections.emptyList();
+	}
+
+	private List<List<String>> _extractTableRows(String tableHTML) {
+		List<List<String>> rows = new ArrayList<>();
+		Matcher trMatcher = _trPattern.matcher(tableHTML);
+
+		while (trMatcher.find()) {
+			rows.add(_extractCells(trMatcher.group(1)));
+		}
+
+		return rows;
 	}
 
 	private Map<String, Object> _generateAudioResource(
@@ -839,8 +839,6 @@ public class LearnRestController extends BaseRestController {
 		"(?i)(<li[^>]*>)(.*?)(</li>)", Pattern.DOTALL);
 	private static final Pattern _tablePattern = Pattern.compile(
 		"(?is)<table[^>]*>(.*?)</table>");
-	private static final Pattern _tbodyPattern = Pattern.compile(
-		"(?is)<tbody[^>]*>(.*?)</tbody>");
 	private static final Pattern _theadPattern = Pattern.compile(
 		"(?is)<thead[^>]*>(.*?)</thead>");
 	private static final Pattern _trPattern = Pattern.compile(

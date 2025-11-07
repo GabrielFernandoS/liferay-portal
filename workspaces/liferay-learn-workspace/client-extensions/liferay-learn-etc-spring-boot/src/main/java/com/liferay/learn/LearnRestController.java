@@ -278,46 +278,28 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private String _convertHTMLListToTextInline(String html) {
-		Matcher matcher = _liPattern.matcher(html);
-		StringBuffer stringBuffer = new StringBuffer();
-
-		while (matcher.find()) {
-			String closingTag = matcher.group(3);
-			String innerContent = StringUtil.trim(matcher.group(2));
-			String openingTag = matcher.group(1);
-
-			String text = StringUtil.trim(
-				_replace(
-					_replace(innerContent, " ", "(?s)<[^>]+>"), " ", "\\s+"));
-
-			if (!text.matches(".*[.!?;:]$")) {
-				int lastCloseTagIndex = innerContent.lastIndexOf("</");
-
-				if (lastCloseTagIndex != -1) {
-					innerContent = StringBundler.concat(
-						_replace(
-							innerContent.substring(0, lastCloseTagIndex), "",
-							"\\s+$"),
-						".", innerContent.substring(lastCloseTagIndex));
-				}
-				else {
-					innerContent = innerContent + ".";
-				}
-			}
-
-			matcher.appendReplacement(
-				stringBuffer,
-				Matcher.quoteReplacement(
-					StringBundler.concat(
-						openingTag, innerContent, closingTag)));
+		if (html == null) {
+			return "";
 		}
 
-		matcher.appendTail(stringBuffer);
+		Matcher matcher = _liPattern.matcher(html);
 
-		return StringUtil.trim(
-			_replace(
-				_replace(stringBuffer.toString(), " ", "(?s)<[^>]+>"), " ",
-				"\\s+"));
+		List<String> listItems = new ArrayList<>();
+
+		while (matcher.find()) {
+			String text = _replace(
+				_replace(matcher.group(2), " ", "(?s)<[^>]+>"), " ", "\\s+");
+
+			text = StringUtil.trim(text);
+
+			if (!text.matches(".*[.!?;:]$")) {
+				text += ".";
+			}
+
+			listItems.add(text);
+		}
+
+		return String.join(" ", listItems);
 	}
 
 	private String _convertHTMLTableToTextInline(String html) {

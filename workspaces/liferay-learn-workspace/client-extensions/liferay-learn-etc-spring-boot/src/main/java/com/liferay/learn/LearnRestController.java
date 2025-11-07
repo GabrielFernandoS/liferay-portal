@@ -20,8 +20,6 @@ import com.liferay.portal.kernel.util.Validator;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import java.net.URI;
-
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -43,7 +41,6 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -508,26 +505,36 @@ public class LearnRestController extends BaseRestController {
 		multipartBodyBuilder.part(
 			"file", byteArrayResource, MediaType.APPLICATION_OCTET_STREAM);
 
-		HttpMethod httpMethod = null;
-		URI uri = null;
-
 		if (documentId != 0) {
-			httpMethod = HttpMethod.PUT;
-			uri = UriComponentsBuilder.fromPath(
-				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents" +
-					"/by-external-reference-code/{fileName}"
-			).build(
-				_siteGroupId, StringUtil.toUpperCase(fileName)
-			);
-		}
-		else {
-			httpMethod = HttpMethod.POST;
-			uri = UriComponentsBuilder.fromPath(
-				"/o/headless-delivery/v1.0/document-folders" +
-					"/{documentFolderId}/documents"
-			).build(
-				_audioLessonsDocumentFolderId
-			);
+			return Collections.singletonMap(
+				"contentUrl",
+				new JSONObject(
+					_webClientBuilder.baseUrl(
+						_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
+					).build(
+					).put(
+					).uri(
+						UriComponentsBuilder.fromPath(
+							"/o/headless-delivery/v1.0/sites/{siteGroupId}" +
+								"/documents/by-external-reference-code" +
+									"/{fileName}"
+						).build(
+							_siteGroupId, StringUtil.toUpperCase(fileName)
+						).toString()
+					).contentType(
+						MediaType.MULTIPART_FORM_DATA
+					).header(
+						HttpHeaders.AUTHORIZATION, _getAuthorization()
+					).body(
+						BodyInserters.fromMultipartData(
+							multipartBodyBuilder.build())
+					).retrieve(
+					).bodyToMono(
+						String.class
+					).block()
+				).optString(
+					"contentUrl", null
+				));
 		}
 
 		return Collections.singletonMap(
@@ -536,10 +543,14 @@ public class LearnRestController extends BaseRestController {
 				_webClientBuilder.baseUrl(
 					_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
 				).build(
-				).method(
-					httpMethod
+				).post(
 				).uri(
-					uri.toString()
+					UriComponentsBuilder.fromPath(
+						"/o/headless-delivery/v1.0/document-folders" +
+							"/{documentFolderId}/documents"
+					).build(
+						_audioLessonsDocumentFolderId
+					).toString()
 				).contentType(
 					MediaType.MULTIPART_FORM_DATA
 				).header(

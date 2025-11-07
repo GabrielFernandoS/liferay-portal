@@ -142,8 +142,8 @@ public class LearnRestController extends BaseRestController {
 
 				return ResponseEntity.ok(
 					_generateAudioResource(
-						content, _documentFolderId, fileName, languageCode,
-						voiceName));
+						content, _audioLessonsDocumentFolderId, fileName,
+						languageCode, voiceName));
 			}
 
 			return ResponseEntity.ok(
@@ -494,7 +494,7 @@ public class LearnRestController extends BaseRestController {
 			"document",
 			new JSONObject(
 			).put(
-				"documentFolderId", _documentFolderId
+				"documentFolderId", _audioLessonsDocumentFolderId
 			).put(
 				"externalReferenceCode", StringUtil.toUpperCase(fileName)
 			).put(
@@ -527,7 +527,7 @@ public class LearnRestController extends BaseRestController {
 				"/o/headless-delivery/v1.0/document-folders" +
 					"/{documentFolderId}/documents"
 			).build(
-				_documentFolderId
+				_audioLessonsDocumentFolderId
 			);
 		}
 
@@ -855,7 +855,7 @@ public class LearnRestController extends BaseRestController {
 		"(?is)<tr[^>]*>(.*?)</tr>");
 
 	@Value("${liferay.learn.audio.lessons.document.folder.id}")
-	private long _documentFolderId;
+	private long _audioLessonsDocumentFolderId;
 
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;

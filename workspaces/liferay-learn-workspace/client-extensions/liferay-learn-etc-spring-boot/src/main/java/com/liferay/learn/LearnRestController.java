@@ -142,7 +142,7 @@ public class LearnRestController extends BaseRestController {
 
 				return ResponseEntity.ok(
 					_generateAudioResource(
-						content, _audioLessonsDocumentFolderId, fileName,
+						content, documentJSONObject.getLong("id"), fileName,
 						languageCode, voiceName));
 			}
 
@@ -428,7 +428,7 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private Map<String, Object> _generateAudioResource(
-			String content, long documentFolderId, String fileName,
+			String content, long documentId, String fileName,
 			String languageCode, String voiceName)
 		throws Exception {
 
@@ -511,7 +511,7 @@ public class LearnRestController extends BaseRestController {
 		HttpMethod httpMethod = null;
 		URI uri = null;
 
-		if (documentFolderId != 0) {
+		if (documentId != 0) {
 			httpMethod = HttpMethod.PUT;
 			uri = UriComponentsBuilder.fromPath(
 				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents" +

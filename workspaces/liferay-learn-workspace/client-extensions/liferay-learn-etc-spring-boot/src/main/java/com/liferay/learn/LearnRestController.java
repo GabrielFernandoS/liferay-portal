@@ -505,7 +505,6 @@ public class LearnRestController extends BaseRestController {
 				"viewableBy", "Anyone"
 			).toString(),
 			MediaType.APPLICATION_JSON);
-
 		multipartBodyBuilder.part(
 			"file", byteArrayResource, MediaType.APPLICATION_OCTET_STREAM);
 

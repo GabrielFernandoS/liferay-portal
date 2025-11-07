@@ -74,7 +74,7 @@ public class LearnRestController extends BaseRestController {
 	@ResponseBody
 	public ResponseEntity<Object> getLessonAudioBase64(
 		@PathVariable long lessonId, @RequestParam String languageCode,
-		@RequestParam String voiceName, @RequestParam String voiceType) {
+		@RequestParam String voiceName) {
 
 		try {
 			JSONObject lessonJSONObject = new JSONObject(
@@ -98,7 +98,7 @@ public class LearnRestController extends BaseRestController {
 			}
 
 			String fileName = StringBundler.concat(
-				"lesson-", lessonId, "-", voiceType, ".mp3");
+				"lesson-", lessonId, "-", voiceName, ".mp3");
 
 			JSONObject jsonObject = null;
 

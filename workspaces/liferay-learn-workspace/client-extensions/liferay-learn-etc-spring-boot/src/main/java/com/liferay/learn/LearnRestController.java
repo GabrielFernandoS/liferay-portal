@@ -11,27 +11,33 @@ import com.liferay.client.extension.util.spring.boot3.BaseRestController;
 import com.liferay.client.extension.util.spring.boot3.client.LiferayOAuth2AccessTokenManager;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.net.URI;
+
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+
+import java.util.*;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +48,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
@@ -54,23 +63,23 @@ public class LearnRestController extends BaseRestController {
 	@GetMapping("/lesson/{lessonId}/audio/base64")
 	@ResponseBody
 	public ResponseEntity<Object> getLessonAudioBase64(
-		@AuthenticationPrincipal Jwt jwt, @PathVariable long lessonId,
-		@RequestParam String languageCode, @RequestParam String voiceName) {
+		@PathVariable long lessonId, @RequestParam String languageCode,
+		@RequestParam String voiceName, @RequestParam String voiceType) {
 
 		try {
-			JSONObject jsonObject = new JSONObject(
+			JSONObject lessonJSONObject = new JSONObject(
 				get(
 					_getAuthorization(),
 					UriComponentsBuilder.fromPath(
 						"/o/c/p2s3lessons/" + lessonId
 					).queryParam(
-						"fields", "contentRawText"
+						"fields", "content,dateModified"
 					).build(
 					).toUri()));
 
-			String contentRawText = jsonObject.getString("contentRawText");
+			String content = lessonJSONObject.getString("content");
 
-			if (Validator.isNull(contentRawText)) {
+			if (Validator.isNull(content)) {
 				return ResponseEntity.status(
 					HttpStatus.NOT_FOUND
 				).body(
@@ -78,58 +87,58 @@ public class LearnRestController extends BaseRestController {
 				);
 			}
 
-			ByteArrayOutputStream byteArrayOutputStream =
-				new ByteArrayOutputStream();
+			String fileName = StringBundler.concat(
+				"lesson-", lessonId, "-", voiceType, ".mp3");
 
-			List<String> ssmls = _splitSsml(
-				contentRawText.replaceAll("\\bLiferay\\b", "Life-ray"), 5000);
+			JSONObject jsonObject = null;
 
-			for (String ssml : ssmls) {
-				String response = post(
-					_getGoogleAccessToken(),
-					new JSONObject(
-						HashMapBuilder.<String, Object>put(
-							"audioConfig",
-							HashMapBuilder.<String, Object>put(
-								"audioEncoding", "MP3"
-							).build()
-						).put(
-							"input",
-							HashMapBuilder.<String, Object>put(
-								"text", ssml
-							).build()
-						).put(
-							"voice",
-							HashMapBuilder.<String, Object>put(
-								"languageCode", languageCode
-							).put(
-								"name", voiceName
-							).build()
-						).build()
-					).toString(),
-					UriComponentsBuilder.fromUriString(
-						"https://texttospeech.googleapis.com/v1beta1/text:" +
-							"synthesize"
-					).build(
-					).toUri());
+			try {
+				jsonObject = new JSONObject(
+					get(
+						"",
+						UriComponentsBuilder.fromPath(
+							StringBundler.concat(
+								"/o/headless-delivery/v1.0/sites/",
+								_siteGroupId,
+								"/documents/by-external-reference-code/",
+								StringUtil.toUpperCase(fileName))
+						).build(
+						).toUri()));
+			}
+			catch (WebClientResponseException webClientResponseException) {
+				if (webClientResponseException.getStatusCode() !=
+						HttpStatus.NOT_FOUND) {
 
-				byteArrayOutputStream.write(
-					Base64.getDecoder(
-					).decode(
-						new JSONObject(
-							response
-						).getString(
-							"audioContent"
-						)
-					));
+					throw webClientResponseException;
+				}
+
+				return ResponseEntity.ok(
+					_generateAudioResource(
+						content, 0, fileName, languageCode, voiceName));
 			}
 
-			String audioContentBase64 = Base64.getEncoder(
-			).encodeToString(
-				byteArrayOutputStream.toByteArray()
+			OffsetDateTime offsetDateTime = OffsetDateTime.parse(
+				lessonJSONObject.getString("dateModified")
+			).truncatedTo(
+				ChronoUnit.MINUTES
 			);
 
-			return ResponseEntity.ok(audioContentBase64);
+			if (offsetDateTime.isAfter(
+					OffsetDateTime.parse(
+						jsonObject.getString("dateModified")
+					).truncatedTo(
+						ChronoUnit.MINUTES
+					))) {
+
+				return ResponseEntity.ok(
+					_generateAudioResource(
+						content, _documentFolderId, fileName, languageCode,
+						voiceName));
+			}
+
+			return ResponseEntity.ok(
+				Collections.singletonMap(
+					"contentUrl", jsonObject.getString("contentUrl")));
 		}
 		catch (Exception exception) {
 			return ResponseEntity.status(
@@ -259,6 +268,174 @@ public class LearnRestController extends BaseRestController {
 		}
 
 		return ResponseEntity.ok(quizResultMap);
+	}
+
+	private Map<String, Object> _generateAudioResource(
+			String content, long documentFolderId, String fileName,
+			String languageCode, String voiceName)
+		throws Exception {
+
+		ByteArrayOutputStream byteArrayOutputStream =
+			new ByteArrayOutputStream();
+
+		List<String> ssmls = _splitSsml(
+			content.replaceAll("\\bLiferay\\b", "Life-ray"), 5000);
+
+		for (String ssml : ssmls) {
+			try {
+				String response = post(
+					_getGoogleAccessToken(),
+					new JSONObject(
+						HashMapBuilder.<String, Object>put(
+							"audioConfig",
+							HashMapBuilder.<String, Object>put(
+								"audioEncoding", "MP3"
+							).build()
+						).put(
+							"input",
+							HashMapBuilder.<String, Object>put(
+								"text", ssml
+							).build()
+						).put(
+							"voice",
+							HashMapBuilder.<String, Object>put(
+								"languageCode", languageCode
+							).put(
+								"name", voiceName
+							).build()
+						).build()
+					).toString(),
+					UriComponentsBuilder.fromUriString(
+						"https://texttospeech.googleapis.com/v1beta1/text:synthesize"
+					).build(
+					).toUri());
+
+				byteArrayOutputStream.write(
+					Base64.getDecoder(
+					).decode(
+						new JSONObject(
+							response
+						).getString(
+							"audioContent"
+						)
+					));
+			}
+			catch (WebClientResponseException e) {
+				System.err.println(
+					"❌ Erro no Google TTS: " + e.getResponseBodyAsString());
+
+				throw new Exception(
+					"Erro ao gerar áudio com Google TTS: " +
+						e.getResponseBodyAsString());
+			}
+		}
+
+		ByteArrayResource fileResource = new ByteArrayResource(
+			byteArrayOutputStream.toByteArray()) {
+
+			@Override
+			public String getFilename() {
+				return fileName;
+			}
+
+		};
+
+		MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+		builder.part(
+			"document",
+			new JSONObject(
+			).put(
+				"documentFolderId", _documentFolderId
+			).put(
+				"externalReferenceCode", StringUtil.toUpperCase(fileName)
+			).put(
+				"fileName", fileName
+			).put(
+				"title", fileName
+			).put(
+				"viewableBy", "Anyone"
+			).toString(),
+			MediaType.APPLICATION_JSON);
+
+		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
+
+		HttpMethod method;
+		URI uri;
+
+		if (documentFolderId != 0) {
+			method = HttpMethod.PUT;
+			uri = UriComponentsBuilder.fromPath(
+				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents/by-external-reference-code/{fileName}"
+			).build(
+				_siteGroupId, StringUtil.toUpperCase(fileName)
+			);
+		}
+		else {
+			method = HttpMethod.POST;
+			uri = UriComponentsBuilder.fromPath(
+				"/o/headless-delivery/v1.0/document-folders/{documentFolderId}/documents"
+			).build(
+				_documentFolderId
+			);
+		}
+
+		try {
+			String response = _webClientBuilder.baseUrl(
+				_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
+			).build(
+			).method(
+				method
+			).uri(
+				uri.toString()
+			).contentType(
+				MediaType.MULTIPART_FORM_DATA
+			).header(
+				HttpHeaders.AUTHORIZATION, _getAuthorization()
+			).body(
+				BodyInserters.fromMultipartData(builder.build())
+			).retrieve(
+			).bodyToMono(
+				String.class
+			).block();
+
+			JSONObject jsonResponse = new JSONObject(response);
+
+			return Collections.singletonMap(
+				"contentUrl", jsonResponse.optString("contentUrl", null));
+		}
+		catch (WebClientResponseException e) {
+			String responseBody = e.getResponseBodyAsString();
+
+			System.err.println("❌ Erro ao enviar documento para Liferay:");
+			System.err.println("Status: " + e.getStatusCode());
+			System.err.println("Corpo do erro: " + responseBody);
+
+			// 🔍 Cria resposta legível para retornar no Postman
+
+			Map<String, Object> errorDetails = new HashMap<>();
+
+			errorDetails.put("details", responseBody);
+			errorDetails.put("documentFolderId", documentFolderId);
+			errorDetails.put("fileName", fileName);
+			errorDetails.put(
+				"message", "Falha ao enviar documento para o Liferay.");
+			errorDetails.put("method", method.toString());
+			errorDetails.put("siteGroupId", _siteGroupId);
+			errorDetails.put(
+				"status",
+				e.getStatusCode(
+				).value());
+			errorDetails.put("uri", uri.toString());
+
+			throw new Exception(
+				"Erro ao enviar arquivo para o Liferay: " +
+					new JSONObject(
+						errorDetails
+					).toString(
+						2
+					));
+		}
 	}
 
 	private String _getAuthorization() {
@@ -529,10 +706,25 @@ public class LearnRestController extends BaseRestController {
 		).build();
 	}
 
+	@Value("${liferay.learn.audio.lessons.document.folder.id}")
+	private long _documentFolderId;
+
 	@Value("${liferay.learn.google.credentials}")
 	private String _googleCredentials;
 
 	@Autowired
 	private LiferayOAuth2AccessTokenManager _liferayOAuth2AccessTokenManager;
+
+	@Value("${com.liferay.lxc.dxp.mainDomain}")
+	private String _lxcDXPMainDomain;
+
+	@Value("${com.liferay.lxc.dxp.server.protocol}")
+	private String _lxcDXPServerProtocol;
+
+	@Value("${liferay.learn.dxp.site.group.id}")
+	private String _siteGroupId;
+
+	@Autowired
+	private WebClient.Builder _webClientBuilder;
 
 }

@@ -29,11 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -282,135 +278,6 @@ public class LearnRestController extends BaseRestController {
 		return ResponseEntity.ok(quizResultMap);
 	}
 
-	private String _convertHTMLListToTextInline(String html) {
-		if (html == null) {
-			return "";
-		}
-
-		Matcher matcher = _liPattern.matcher(html);
-
-		List<String> listItems = new ArrayList<>();
-
-		while (matcher.find()) {
-			String text = _replace(
-				_replace(matcher.group(2), " ", "(?s)<[^>]+>"), " ", "\\s+");
-
-			text = StringUtil.trim(text);
-
-			if (!text.matches(".*[.!?;:]$")) {
-				text += ".";
-			}
-
-			listItems.add(text);
-		}
-
-		return String.join(" ", listItems);
-	}
-
-	private String _convertHTMLTableToTextInline(String html) {
-		if (html == null) {
-			return "";
-		}
-
-		StringBuilder sb = new StringBuilder();
-		Matcher matcher = _tablePattern.matcher(html);
-
-		while (matcher.find()) {
-			matcher.appendReplacement(
-				sb,
-				Matcher.quoteReplacement(
-					_convertTableToText(matcher.group(1))));
-		}
-
-		matcher.appendTail(sb);
-
-		return sb.toString();
-	}
-
-	private String _convertTableToText(String tableHTML) {
-		List<String> headers = _extractTableHeaders(tableHTML);
-		List<List<String>> rows = _extractTableRows(tableHTML);
-
-		StringBundler sb = new StringBundler("Table: ");
-
-		if (!headers.isEmpty()) {
-			sb.append("Column headings: ");
-
-			sb.append(String.join("; ", headers));
-			sb.append(". ");
-		}
-
-		for (int i = 0; i < rows.size(); i++) {
-			List<String> cells = rows.get(i);
-
-			if (cells.isEmpty()) {
-				continue;
-			}
-
-			sb.append("Row ");
-			sb.append(i + 1);
-			sb.append(". ");
-
-			for (int j = 0; j < cells.size(); j++) {
-				String header =
-					(j < headers.size()) ? headers.get(j) : "Column " + (j + 1);
-
-				sb.append(header);
-
-				sb.append(": ");
-				sb.append(cells.get(j));
-				sb.append(". ");
-			}
-		}
-
-		return StringUtil.trim(sb.toString()) + " ";
-	}
-
-	private List<String> _extractCells(String rowHTML) {
-		List<String> cells = new ArrayList<>();
-		Matcher cellMatcher = _cellPattern.matcher(rowHTML);
-
-		while (cellMatcher.find()) {
-			String raw = _unescapeHTML(cellMatcher.group(1));
-
-			if (Objects.equals(raw, "✔") || Objects.equals(raw, "✓")) {
-				raw = "supported";
-			}
-			else if (raw.isEmpty() || Objects.equals(raw, "&nbsp;")) {
-				raw = "not supported";
-			}
-
-			cells.add(raw);
-		}
-
-		return cells;
-	}
-
-	private List<String> _extractTableHeaders(String tableHTML) {
-		Matcher matcher = _theadPattern.matcher(tableHTML);
-
-		if (matcher.find()) {
-			Matcher headTrMatcher = _trPattern.matcher(matcher.group(1));
-
-			if (headTrMatcher.find()) {
-				return _extractCells(headTrMatcher.group(1));
-			}
-		}
-
-		return Collections.emptyList();
-	}
-
-	private List<List<String>> _extractTableRows(String tableHTML) {
-		List<List<String>> rows = new ArrayList<>();
-		Matcher trMatcher = _trPattern.matcher(tableHTML);
-
-		while (trMatcher.find()) {
-			rows.add(_extractCells(trMatcher.group(1)));
-		}
-
-		return rows;
-	}
-
 	private Map<String, Object> _generateAudioResource(
 			String content, long documentId, String fileName,
 			String languageCode, String voiceName)
@@ -420,8 +287,8 @@ public class LearnRestController extends BaseRestController {
 			new ByteArrayOutputStream();
 
 		List<String> ssmls = _splitSsml(
-			_replace(_htmlToReadableText(content), "Life-ray", "\\bLiferay\\b"),
-			5000);
+			_replace(
+				_htmlToReadableText(content), "Life-ray", "\\bLiferay\\b"));
 
 		for (String ssml : ssmls) {
 			String response = post(
@@ -828,31 +695,37 @@ public class LearnRestController extends BaseRestController {
 		);
 	}
 
-	private List<String> _splitSsml(String ssml, int maxLength) {
+	private List<String> _splitSsml(String ssml) {
 		List<String> parts = new ArrayList<>();
 		StringBundler sb = new StringBundler();
 
-		String ssmlContent = StringUtil.trim(
-			_replace(_replace(ssml, "", "^<speak>"), "", "</speak>$"));
+		String ssmlContent = ssml.replaceFirst(
+			"^<speak>", ""
+		).replaceFirst(
+			"</speak>$", ""
+		).trim();
 
-//		String[] sentences = _convertHTMLListToTextInline(
-//			_convertHTMLTableToTextInline(_unescapeHTML(ssmlContent))
-//		).split(
-//			"(?<=[.!?])\\s+"
-//		);
+		String[] sentences = ssmlContent.split("(?<=[.!?])\\s+");
 
 		for (String sentence : sentences) {
-			if ((sb.length() + sentence.length()) > maxLength) {
-				parts.add(StringUtil.trim(sb.toString()));
+			if ((sb.length() + sentence.length()) > 5000) {
+				parts.add(
+					sb.toString(
+					).trim());
 				sb = new StringBundler();
 			}
 
-			sb.append(sentence);
-			sb.append(" ");
+			sb.append(
+				sentence
+			).append(
+				" "
+			);
 		}
 
 		if (sb.length() > 0) {
-			parts.add(sb.toString());
+			parts.add(
+				sb.toString(
+				).trim());
 		}
 
 		return parts;
@@ -877,30 +750,6 @@ public class LearnRestController extends BaseRestController {
 			"title", objectDefinitionMap.get("pluralLabel")
 		).build();
 	}
-
-	private String _unescapeHTML(String html) {
-		if (html == null) {
-			return "";
-		}
-
-		return StringUtils.trim(
-			StringEscapeUtils.unescapeHtml4(
-				html
-			).replace(
-				'\u00A0', ' '
-			));
-	}
-
-	private static final Pattern _cellPattern = Pattern.compile(
-		"(?is)<t(?:h|d)[^>]*>(.*?)</t(?:h|d)>");
-	private static final Pattern _liPattern = Pattern.compile(
-		"(?i)(<li[^>]*>)(.*?)(</li>)", Pattern.DOTALL);
-	private static final Pattern _tablePattern = Pattern.compile(
-		"(?is)<table[^>]*>(.*?)</table>");
-	private static final Pattern _theadPattern = Pattern.compile(
-		"(?is)<thead[^>]*>(.*?)</thead>");
-	private static final Pattern _trPattern = Pattern.compile(
-		"(?is)<tr[^>]*>(.*?)</tr>");
 
 	@Value("${liferay.learn.audio.lessons.document.folder.id}")
 	private long _audioLessonsDocumentFolderId;

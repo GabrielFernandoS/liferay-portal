@@ -38,6 +38,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -415,7 +420,8 @@ public class LearnRestController extends BaseRestController {
 			new ByteArrayOutputStream();
 
 		List<String> ssmls = _splitSsml(
-			_replace(content, "Life-ray", "\\bLiferay\\b"), 5000);
+			_replace(_htmlToReadableText(content), "Life-ray", "\\bLiferay\\b"),
+			5000);
 
 		for (String ssml : ssmls) {
 			String response = post(
@@ -707,6 +713,58 @@ public class LearnRestController extends BaseRestController {
 		return map;
 	}
 
+	private String _htmlToReadableText(String html) {
+		Document document = Jsoup.parse(html);
+
+		for (Element table : document.select("table")) {
+			StringBuilder sb = new StringBuilder();
+
+			for (Element row : table.select("tr")) {
+				Elements cols = row.select("th, td");
+
+				for (Element col : cols) {
+					sb.append(
+						col.text()
+					).append(
+						" | "
+					);
+				}
+
+				sb.append("\n");
+			}
+
+			table.replaceWith(
+				document.createElement(
+					"p"
+				).text(
+					sb.toString()
+				));
+		}
+
+		for (Element list : document.select("ul, ol")) {
+			StringBuilder sb = new StringBuilder();
+
+			for (Element li : list.select("li")) {
+				sb.append(
+					"- "
+				).append(
+					li.text()
+				).append(
+					"\n"
+				);
+			}
+
+			list.replaceWith(
+				document.createElement(
+					"p"
+				).text(
+					sb.toString()
+				));
+		}
+
+		return document.text();
+	}
+
 	private void _postUserBadge(long quizId, long userId) {
 		JSONArray jsonArray = new JSONObject(
 			get(
@@ -777,11 +835,11 @@ public class LearnRestController extends BaseRestController {
 		String ssmlContent = StringUtil.trim(
 			_replace(_replace(ssml, "", "^<speak>"), "", "</speak>$"));
 
-		String[] sentences = _convertHTMLListToTextInline(
-			_convertHTMLTableToTextInline(_unescapeHTML(ssmlContent))
-		).split(
-			"(?<=[.!?])\\s+"
-		);
+//		String[] sentences = _convertHTMLListToTextInline(
+//			_convertHTMLTableToTextInline(_unescapeHTML(ssmlContent))
+//		).split(
+//			"(?<=[.!?])\\s+"
+//		);
 
 		for (String sentence : sentences) {
 			if ((sb.length() + sentence.length()) > maxLength) {

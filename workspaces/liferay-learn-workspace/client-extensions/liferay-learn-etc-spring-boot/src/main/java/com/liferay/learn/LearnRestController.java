@@ -25,13 +25,7 @@ import java.net.URI;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Matcher;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -280,151 +274,23 @@ public class LearnRestController extends BaseRestController {
 		return ResponseEntity.ok(quizResultMap);
 	}
 
-	private String _convertHTMLListToTextInline(String html) {
-		Matcher matcher = _liPattern.matcher(html);
-		StringBuffer stringBuffer = new StringBuffer();
+	private void _addSentenceChunk(
+		List<String> ssmlParts, StringBundler sb, String sentence,
+		int maxLength) {
 
-		while (matcher.find()) {
-			String closingTag = matcher.group(3);
-			String innerContent = StringUtil.trim(matcher.group(2));
-			String openingTag = matcher.group(1);
-
-			String text = StringUtil.trim(
-				_replace(
-					_replace(innerContent, " ", "(?s)<[^>]+>"), " ", "\\s+"));
-
-			if (!text.matches(".*[.!?;:]$")) {
-				int lastCloseTagIndex = innerContent.lastIndexOf("</");
-
-				if (lastCloseTagIndex != -1) {
-					innerContent = StringBundler.concat(
-						_replace(
-							innerContent.substring(0, lastCloseTagIndex), "",
-							"\\s+$"),
-						".", innerContent.substring(lastCloseTagIndex));
-				}
-				else {
-					innerContent = innerContent + ".";
-				}
+		if ((sb.length() + sentence.length()) > (maxLength - 15)) {
+			if (sb.length() > 0) {
+				ssmlParts.add(
+					"<speak>" + StringUtil.trim(sb.toString()) + "</speak>");
+				sb.setIndex(0); // limpa o buffer
 			}
-
-			matcher.appendReplacement(
-				stringBuffer,
-				Matcher.quoteReplacement(
-					StringBundler.concat(
-						openingTag, innerContent, closingTag)));
 		}
 
-		matcher.appendTail(stringBuffer);
-
-		return StringUtil.trim(
-			_replace(
-				_replace(stringBuffer.toString(), " ", "(?s)<[^>]+>"), " ",
-				"\\s+"));
-	}
-
-	private String _convertHTMLTableToTextInline(String html) {
-		if (html == null) {
-			return "";
-		}
-
-		StringBuffer stringBuffer = new StringBuffer();
-		Matcher tableMatcher = _tablePattern.matcher(html);
-
-		while (tableMatcher.find()) {
-			String tableHTML = tableMatcher.group(1);
-
-			List<String> headers = new ArrayList<>();
-			Matcher theadMatcher = _theadPattern.matcher(tableHTML);
-
-			if (theadMatcher.find()) {
-				Matcher headTrMatcher = _trPattern.matcher(
-					theadMatcher.group(1));
-
-				if (headTrMatcher.find()) {
-					Matcher headCellsMatcher = _cellPattern.matcher(
-						headTrMatcher.group(1));
-
-					while (headCellsMatcher.find()) {
-						headers.add(_unescapeHTML(headCellsMatcher.group(1)));
-					}
-				}
-			}
-
-			String bodyHTML = tableHTML;
-			Matcher tbodyMatcher = _tbodyPattern.matcher(tableHTML);
-
-			if (tbodyMatcher.find()) {
-				bodyHTML = tbodyMatcher.group(1);
-			}
-
-			Matcher trMatcher = _trPattern.matcher(bodyHTML);
-
-			StringBundler tableSB = new StringBundler("Table: ");
-
-			if (!headers.isEmpty()) {
-				StringBundler sb = new StringBundler("Column headings: ");
-
-				for (int i = 0; i < headers.size(); i++) {
-					sb.append(headers.get(i));
-
-					if (i < (headers.size() - 1)) {
-						sb.append("; ");
-					}
-					else {
-						sb.append(". ");
-					}
-				}
-
-				tableSB.append(sb);
-			}
-
-			int row = 0;
-
-			while (trMatcher.find()) {
-				row++;
-
-				Matcher cellMatcher = _cellPattern.matcher(trMatcher.group(1));
-				List<String> cells = new ArrayList<>();
-
-				while (cellMatcher.find()) {
-					String raw = _unescapeHTML(cellMatcher.group(1));
-
-					if (Objects.equals(raw, "✔") || Objects.equals(raw, "✓")) {
-						raw = "supported";
-					}
-					else if (raw.isEmpty() || Objects.equals(raw, "&nbsp;")) {
-						raw = "not supported";
-					}
-
-					cells.add(raw);
-				}
-
-				if (!cells.isEmpty()) {
-					tableSB.append("Row ");
-					tableSB.append(row);
-					tableSB.append(". ");
-
-					for (int c = 0; c < cells.size(); c++) {
-						tableSB.append(
-							(c < headers.size()) ? headers.get(c) :
-								("Column " + (c + 1)));
-						tableSB.append(": ");
-						tableSB.append(cells.get(c));
-						tableSB.append(". ");
-					}
-				}
-			}
-
-			tableMatcher.appendReplacement(
-				stringBuffer,
-				Matcher.quoteReplacement(
-					StringUtil.trim(tableSB.toString()) + " "));
-		}
-
-		tableMatcher.appendTail(stringBuffer);
-
-		return stringBuffer.toString();
+		sb.append(
+			sentence
+		).append(
+			" "
+		);
 	}
 
 	private Map<String, Object> _generateAudioResource(
@@ -435,47 +301,60 @@ public class LearnRestController extends BaseRestController {
 		ByteArrayOutputStream byteArrayOutputStream =
 			new ByteArrayOutputStream();
 
-		List<String> ssmls = _splitSsml(
-			_replace(content, "Life-ray", "\\bLiferay\\b"), 5000);
+		content = content.replaceAll("(?i)<[^>]+>", ". ");
+
+		String cleanedContent = _prepareContentForTTS(
+			content.replaceAll("\\bLiferay\\b", "Life-ray"));
+
+		List<String> ssmls = _splitSsml(cleanedContent, 5000);
 
 		for (String ssml : ssmls) {
-			String response = post(
-				_getGoogleAccessToken(),
-				new JSONObject(
-					HashMapBuilder.<String, Object>put(
-						"audioConfig",
-						HashMapBuilder.<String, Object>put(
-							"audioEncoding", "MP3"
-						).build()
-					).put(
-						"input",
-						HashMapBuilder.<String, Object>put(
-							"text", ssml
-						).build()
-					).put(
-						"voice",
-						HashMapBuilder.<String, Object>put(
-							"languageCode", languageCode
-						).put(
-							"name", voiceName
-						).build()
-					).build()
-				).toString(),
-				UriComponentsBuilder.fromUriString(
-					"https://texttospeech.googleapis.com/v1beta1" +
-						"/text:synthesize"
-				).build(
-				).toUri());
-
-			byteArrayOutputStream.write(
-				Base64.getDecoder(
-				).decode(
+			try {
+				String response = post(
+					_getGoogleAccessToken(),
 					new JSONObject(
-						response
-					).getString(
-						"audioContent"
-					)
-				));
+						HashMapBuilder.<String, Object>put(
+							"audioConfig",
+							HashMapBuilder.<String, Object>put(
+								"audioEncoding", "MP3"
+							).build()
+						).put(
+							"input",
+							HashMapBuilder.<String, Object>put(
+								"text", ssml
+							).build()
+						).put(
+							"voice",
+							HashMapBuilder.<String, Object>put(
+								"languageCode", languageCode
+							).put(
+								"name", voiceName
+							).build()
+						).build()
+					).toString(),
+					UriComponentsBuilder.fromUriString(
+						"https://texttospeech.googleapis.com/v1beta1/text:synthesize"
+					).build(
+					).toUri());
+
+				byteArrayOutputStream.write(
+					Base64.getDecoder(
+					).decode(
+						new JSONObject(
+							response
+						).getString(
+							"audioContent"
+						)
+					));
+			}
+			catch (WebClientResponseException e) {
+				System.err.println(
+					"❌ Erro no Google TTS: " + e.getResponseBodyAsString());
+
+				throw new Exception(
+					"Erro ao gerar áudio com Google TTS: " +
+						e.getResponseBodyAsString());
+			}
 		}
 
 		ByteArrayResource fileResource = new ByteArrayResource(
@@ -508,14 +387,13 @@ public class LearnRestController extends BaseRestController {
 
 		builder.part("file", fileResource, MediaType.APPLICATION_OCTET_STREAM);
 
-		HttpMethod method = null;
-		URI uri = null;
+		HttpMethod method;
+		URI uri;
 
 		if (documentFolderId != 0) {
 			method = HttpMethod.PUT;
 			uri = UriComponentsBuilder.fromPath(
-				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents" +
-					"/by-external-reference-code/{fileName}"
+				"/o/headless-delivery/v1.0/sites/{siteGroupId}/documents/by-external-reference-code/{fileName}"
 			).build(
 				_siteGroupId, StringUtil.toUpperCase(fileName)
 			);
@@ -523,36 +401,66 @@ public class LearnRestController extends BaseRestController {
 		else {
 			method = HttpMethod.POST;
 			uri = UriComponentsBuilder.fromPath(
-				"/o/headless-delivery/v1.0/document-folders" +
-					"/{documentFolderId}/documents"
+				"/o/headless-delivery/v1.0/document-folders/{documentFolderId}/documents"
 			).build(
 				_documentFolderId
 			);
 		}
 
-		return Collections.singletonMap(
-			"contentUrl",
-			new JSONObject(
-				_webClientBuilder.baseUrl(
-					_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
-				).build(
-				).method(
-					method
-				).uri(
-					uri.toString()
-				).contentType(
-					MediaType.MULTIPART_FORM_DATA
-				).header(
-					HttpHeaders.AUTHORIZATION, _getAuthorization()
-				).body(
-					BodyInserters.fromMultipartData(builder.build())
-				).retrieve(
-				).bodyToMono(
-					String.class
-				).block()
-			).optString(
-				"contentUrl", null
-			));
+		try {
+			String response = _webClientBuilder.baseUrl(
+				_lxcDXPServerProtocol + "://" + _lxcDXPMainDomain
+			).build(
+			).method(
+				method
+			).uri(
+				uri.toString()
+			).contentType(
+				MediaType.MULTIPART_FORM_DATA
+			).header(
+				HttpHeaders.AUTHORIZATION, _getAuthorization()
+			).body(
+				BodyInserters.fromMultipartData(builder.build())
+			).retrieve(
+			).bodyToMono(
+				String.class
+			).block();
+
+			JSONObject jsonResponse = new JSONObject(response);
+
+			return Collections.singletonMap(
+				"contentUrl", jsonResponse.optString("contentUrl", null));
+		}
+		catch (WebClientResponseException e) {
+			String responseBody = e.getResponseBodyAsString();
+
+			System.err.println("❌ Erro ao enviar documento para Liferay:");
+			System.err.println("Status: " + e.getStatusCode());
+			System.err.println("Corpo do erro: " + responseBody);
+
+			Map<String, Object> errorDetails = new HashMap<>();
+
+			errorDetails.put("details", responseBody);
+			errorDetails.put("documentFolderId", documentFolderId);
+			errorDetails.put("fileName", fileName);
+			errorDetails.put(
+				"message", "Falha ao enviar documento para o Liferay.");
+			errorDetails.put("method", method.toString());
+			errorDetails.put("siteGroupId", _siteGroupId);
+			errorDetails.put(
+				"status",
+				e.getStatusCode(
+				).value());
+			errorDetails.put("uri", uri.toString());
+
+			throw new Exception(
+				"Erro ao enviar arquivo para o Liferay: " +
+					new JSONObject(
+						errorDetails
+					).toString(
+						2
+					));
+		}
 	}
 
 	private String _getAuthorization() {
@@ -766,10 +674,85 @@ public class LearnRestController extends BaseRestController {
 			).toUri());
 	}
 
-	private String _replace(String s, String replacement, String regex) {
-		Pattern pattern = Pattern.compile(regex);
+	private String _prepareContentForTTS(String content) {
+		if (content == null) {
+			return "";
+		}
 
-		return pattern.matcher(
+		String cleaned = content;
+
+		// 1️⃣ Remover &nbsp; (espaço não separável)
+
+		cleaned = cleaned.replaceAll("&nbsp;", " ");
+
+		// 2️⃣ Remover qualquer texto que o TTS leia como "less than speak greater than"
+
+		cleaned = cleaned.replaceAll(
+			"&lt;speak&gt;", ""
+		).replaceAll(
+			"&lt;/speak&gt;", ""
+		).replaceAll(
+			"(?i)less than,?\\s*speak\\s*greater than", ""
+		).replaceAll(
+			"(?i)less than,?\\s*/speak\\s*greater than", ""
+		).replaceAll(
+			"(?i)less than,?\\s*slash,?\\s*speak\\s*greater than", ""
+		).trim();
+
+		// 3️⃣ Remover palavra "link" e deixar apenas o texto do <a>
+
+		cleaned = cleaned.replaceAll(
+			"<a [^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", "$2");
+
+		// 4️⃣ Melhorar leitura das tabelas
+
+		cleaned = cleaned
+				.replaceAll("(?i)<table[^>]*>", "<p>Table information:</p>")
+				.replaceAll("(?i)</table>", "<p>End of table.</p>")
+				.replaceAll("(?i)<thead>", "")
+				.replaceAll("(?i)</thead>", "")
+				.replaceAll("(?i)<tbody>", "")
+				.replaceAll("(?i)</tbody>", "")
+
+				// Cada linha = Row
+
+				.replaceAll("(?i)<tr>", "<p>Row:</p>")
+				.replaceAll("(?i)</tr>", "")
+
+				// Cabeçalhos e células
+
+				.replaceAll("(?i)<th[^>]*>", "<p>Header: ")
+				.replaceAll("(?i)</th>", ".</p>")
+				.replaceAll("(?i)<td[^>]*>", "<p>Information: ")
+				.replaceAll("(?i)</td>", ".</p>")
+
+				// Substituir ✔ por "supported"
+
+				.replaceAll("✔", "supported");
+
+		// 5️⃣ Remover repetições finais e tags speak residuais
+
+		cleaned = cleaned.replaceAll(
+			"(?i)less than,?\\s*slash,?\\s*speak\\s*greater than", ""
+		).replaceAll(
+			"&lt;/?speak&gt;", ""
+		).replaceAll(
+			"<speak>|</speak>", ""
+		);
+
+		// Limpeza final
+
+		cleaned = cleaned.replaceAll(
+			"\\s{2,}", " "
+		).trim();
+
+		return cleaned;
+	}
+
+	private String _replace(String s, String replacement, String regex) {
+		return Pattern.compile(
+			regex
+		).matcher(
 			s
 		).replaceAll(
 			replacement
@@ -778,29 +761,51 @@ public class LearnRestController extends BaseRestController {
 
 	private List<String> _splitSsml(String ssml, int maxLength) {
 		List<String> parts = new ArrayList<>();
-		StringBundler sb = new StringBundler();
 
-		String ssmlContent = StringUtil.trim(
-			_replace(_replace(ssml, "", "^<speak>"), "", "</speak>$"));
+		if ((ssml == null) || ssml.isEmpty()) {
+			return parts;
+		}
+		ssml = ssml.replaceAll("(?i)&lt;/?speak&gt;", "").replaceAll("(?i)<\\/?speak>", "");
 
-		String[] sentences = _convertHTMLListToTextInline(
-			_convertHTMLTableToTextInline(_unescapeHTML(ssmlContent))
-		).split(
-			"(?<=[.!?])\\s+"
-		);
+
+		// Remove tags <speak> se existirem e pega só o conteúdo
+
+		String ssmlContent = ssml.replaceFirst(
+			"^<speak>", ""
+		).replaceFirst(
+			"</speak>$", ""
+		).trim();
+
+		// Divide o texto em frases por pontuação forte
+
+		String[] sentences = ssmlContent.split("(?<=[.!?])\\s+");
+
+		StringBuilder currentPart = new StringBuilder();
 
 		for (String sentence : sentences) {
-			if ((sb.length() + sentence.length()) > maxLength) {
-				parts.add(StringUtil.trim(sb.toString()));
-				sb = new StringBundler();
+
+			// Se a frase adicionada ultrapassar o limite, inicia um novo bloco
+
+			if ((currentPart.length() + sentence.length()) > maxLength) {
+				parts.add(
+					"<speak>" +
+						currentPart.toString(
+						).trim() + "</speak>");
+				currentPart = new StringBuilder();
 			}
 
-			sb.append(sentence);
-			sb.append(" ");
+			currentPart.append(
+				sentence
+			).append(
+				" "
+			);
 		}
 
-		if (sb.length() > 0) {
-			parts.add(sb.toString());
+		if (currentPart.length() > 0) {
+			parts.add(
+				"<speak>" +
+					currentPart.toString(
+					).trim() + "</speak>");
 		}
 
 		return parts;
@@ -825,32 +830,6 @@ public class LearnRestController extends BaseRestController {
 			"title", objectDefinitionMap.get("pluralLabel")
 		).build();
 	}
-
-	private String _unescapeHTML(String html) {
-		if (html == null) {
-			return "";
-		}
-
-		return StringUtils.trim(
-			StringEscapeUtils.unescapeHtml4(
-				html
-			).replace(
-				'\u00A0', ' '
-			));
-	}
-
-	private static final Pattern _cellPattern = Pattern.compile(
-		"(?is)<t(?:h|d)[^>]*>(.*?)</t(?:h|d)>");
-	private static final Pattern _liPattern = Pattern.compile(
-		"(?i)(<li[^>]*>)(.*?)(</li>)", Pattern.DOTALL);
-	private static final Pattern _tablePattern = Pattern.compile(
-		"(?is)<table[^>]*>(.*?)</table>");
-	private static final Pattern _tbodyPattern = Pattern.compile(
-		"(?is)<tbody[^>]*>(.*?)</tbody>");
-	private static final Pattern _theadPattern = Pattern.compile(
-		"(?is)<thead[^>]*>(.*?)</thead>");
-	private static final Pattern _trPattern = Pattern.compile(
-		"(?is)<tr[^>]*>(.*?)</tr>");
 
 	@Value("${liferay.learn.audio.lessons.document.folder.id}")
 	private long _documentFolderId;

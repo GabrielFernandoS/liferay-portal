@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -278,14 +277,6 @@ public class LearnRestController extends BaseRestController {
 		return ResponseEntity.ok(quizResultMap);
 	}
 
-	private String _applyReplacements(String lessonContent) {
-		lessonContent = lessonContent.replaceAll("\\bPaaS\\b", "pass");
-		lessonContent = lessonContent.replaceAll("\\bSaaS\\b", "saas");
-		lessonContent = lessonContent.replaceAll("\\bLiferay\\b", "Life-ray");
-
-		return lessonContent;
-	}
-
 	private Map<String, Object> _generateAudioResource(
 			String content, long documentId, String fileName,
 			String languageCode, String voiceName)
@@ -294,9 +285,7 @@ public class LearnRestController extends BaseRestController {
 		ByteArrayOutputStream byteArrayOutputStream =
 			new ByteArrayOutputStream();
 
-		List<String> ssmls = _splitSsml(
-			_replace(
-				_htmlToReadableText(content), "Life-ray", "\\bLiferay\\b"));
+		List<String> ssmls = _splitSsml(_htmlToReadableText(content));
 
 		for (String ssml : ssmls) {
 			String response = post(
@@ -682,7 +671,7 @@ public class LearnRestController extends BaseRestController {
 				));
 		}
 
-		return _applyReplacements(document.text());
+		return _replace(document.text());
 	}
 
 	private String _normalizeCell(String text) {
@@ -690,11 +679,7 @@ public class LearnRestController extends BaseRestController {
 			return "Supported";
 		}
 
-		if (text.isEmpty() || text.equals("\u00A0")) {
-			return "Not supported";
-		}
-
-		return text;
+		return "Not supported";
 	}
 
 	private void _postUserBadge(long quizId, long userId) {
@@ -750,14 +735,16 @@ public class LearnRestController extends BaseRestController {
 			).toUri());
 	}
 
-	private String _replace(String s, String replacement, String regex) {
-		Pattern pattern = Pattern.compile(regex);
-
-		return pattern.matcher(
-			s
-		).replaceAll(
-			replacement
-		);
+	private String _replace(String s) {
+		return StringUtil.replace(
+			s, "", "",
+			HashMapBuilder.put(
+				"Liferay", "Life-ray"
+			).put(
+				"PaaS", "pass"
+			).put(
+				"SaaS", "saas"
+			).build());
 	}
 
 	private List<String> _splitSsml(String ssml) {

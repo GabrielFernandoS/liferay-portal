@@ -739,6 +739,10 @@ public class LearnRestController extends BaseRestController {
 		return StringUtil.replace(
 			s, "", "",
 			HashMapBuilder.put(
+				"</speak>$", ""
+			).put(
+				"^<speak>", ""
+			).put(
 				"Liferay", "Life-ray"
 			).put(
 				"PaaS", "pass"
@@ -751,13 +755,7 @@ public class LearnRestController extends BaseRestController {
 		List<String> parts = new ArrayList<>();
 		StringBundler sb = new StringBundler();
 
-		String ssmlContent = ssml.replaceFirst(
-			"^<speak>", ""
-		).replaceFirst(
-			"</speak>$", ""
-		).trim();
-
-		String[] sentences = ssmlContent.split("(?<=[.!?])\\s+");
+		String[] sentences = ssml.split("(?<=[.!?])\\s+");
 
 		for (String sentence : sentences) {
 			if ((sb.length() + sentence.length()) > 5000) {

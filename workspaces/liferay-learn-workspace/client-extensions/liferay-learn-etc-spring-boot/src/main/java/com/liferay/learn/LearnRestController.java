@@ -590,7 +590,7 @@ public class LearnRestController extends BaseRestController {
 				Element firstRow = table.selectFirst("tr");
 
 				if (firstRow != null) {
-					headerEls = firstRow.select("th, td");
+					headerEls = firstRow.select("td, th");
 				}
 			}
 

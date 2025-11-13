@@ -24,11 +24,14 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -613,18 +616,17 @@ public class LearnRestController extends BaseRestController {
 					String label =
 						(i < headerCount) ? headers.get(i) :
 							"Column " + (i + 1);
-					String text = _normalizeCell(
-						cols.get(
-							i
-						).text(
-						).trim());
 
 					sb.append(
 						label
 					).append(
 						": "
 					).append(
-						text
+						_normalizeCell(
+							cols.get(
+								i
+							).text(
+							).trim())
 					).append(
 						". "
 					);
@@ -675,11 +677,15 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private String _normalizeCell(String text) {
-		if (text.equals("✔") || text.equals("✓")) {
+		if (_supportedValuesContentTable.contains(text)) {
 			return "Supported";
 		}
 
-		return "Not supported";
+		if (_notSupportedValuesContentTable.contains(text)) {
+			return "Not supported";
+		}
+
+		return text;
 	}
 
 	private void _postUserBadge(long quizId, long userId) {
@@ -736,19 +742,21 @@ public class LearnRestController extends BaseRestController {
 	}
 
 	private String _replace(String s) {
-		return StringUtil.replace(
-			s, "", "",
-			HashMapBuilder.put(
-				"</speak>$", ""
-			).put(
-				"^<speak>", ""
-			).put(
-				"Liferay", "Life-ray"
-			).put(
-				"PaaS", "pass"
-			).put(
-				"SaaS", "saas"
-			).build());
+		if (s == null) {
+			return "";
+		}
+
+		return s.replaceAll(
+			"[\\u00A0\\u200B]+", " "
+		).replaceAll(
+			"(?i)\\bLiferay\\b", "Life-ray"
+		).replaceAll(
+			"(?i)\\bP\\s*a\\s*a\\s*S\\b", "pass"
+		).replaceAll(
+			"(?i)\\bS\\s*a\\s*a\\s*S\\b", "saas"
+		).replaceAll(
+			"(?i)^<speak>|</speak>$", ""
+		).trim();
 	}
 
 	private List<String> _splitSsml(String ssml) {
@@ -800,6 +808,11 @@ public class LearnRestController extends BaseRestController {
 			"title", objectDefinitionMap.get("pluralLabel")
 		).build();
 	}
+
+	private static final Set<String> _notSupportedValuesContentTable =
+		new HashSet<>(Arrays.asList("✖", "✕", "✗", ""));
+	private static final Set<String> _supportedValuesContentTable =
+		new HashSet<>(Arrays.asList("✔", "✓"));
 
 	@Value("${liferay.learn.audio.lessons.document.folder.id}")
 	private long _audioLessonsDocumentFolderId;

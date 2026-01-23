@@ -1,6 +1,6 @@
 .tr-table {
 	&__row {
-		&--highligth {
+		&--highlight {
 			border-left: 4px solid $color-primary;
 		}
 
@@ -21,7 +21,7 @@
 	width: 100%;
 
 	&__header {
-		color: $color-gray;
+		color: #808080;
 		font-size: 11px;
 		font-weight: 500;
 		text-transform: uppercase;
@@ -35,12 +35,12 @@
 	}
 }
 
+.page-item.active .page-link {
+	z-index: 0;
+}
+
 .pagination-bar {
 	.pagination-root {
 		z-index: 0;
 	}
-}
-
-.page-item.active .page-link {
-	z-index: 0;
 }

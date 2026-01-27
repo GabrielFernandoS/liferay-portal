@@ -35,6 +35,10 @@
 	}
 }
 
+.page-item.active .page-link {
+	z-index: 0;
+}
+
 .pagination-bar {
 	.pagination-root {
 		z-index: 0;
